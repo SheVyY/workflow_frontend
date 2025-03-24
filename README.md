@@ -6,14 +6,14 @@ A simple app that provides daily summaries of top articles from selected news so
 
 - Select multiple news sources (up to 3)
 - Specify topics of interest (up to 3)
-- Choose your preferred language (English or Czech)
+- Choose your preferred language (English or Czech) for receiving summaries
 - Receive daily summaries to your email at 8:00 AM UTC
 
 ## Usage
 
 1. **Media Sources**: Enter up to 3 website domains (e.g., forbes.cz, bbc.com)
 2. **Topics**: Add up to 3 topics of interest (e.g., AI, Politics, Technology)
-3. **Language**: Select your preferred language
+3. **Language**: Select your preferred language for receiving the summaries
 4. **Email**: Enter your email address to receive the summaries
 5. **Start**: Click the Start button to create your subscription
 
@@ -31,9 +31,35 @@ This application uses the Doflo logo (doflo_logo.png). Make sure this file is pl
 
 ## Setup
 
+### Local Development
 1. Place the `doflo_logo.png` file in the root directory
-2. Run the application using `npx serve`
-3. Access the app at http://localhost:3000
+2. Run `npm install` to install dependencies
+3. Run the application using `npx serve`
+4. Access the app at http://localhost:3000
+
+### Vercel Deployment
+1. Ensure your repository includes all necessary files (including doflo_logo.png)
+2. Install Vercel CLI: `npm install -g vercel`
+3. Deploy to Vercel: `vercel`
+4. For production deployment: `vercel --prod`
+
+## vercel.json Configuration
+
+The application includes a `vercel.json` file with the following configuration:
+```json
+{
+  "version": 2,
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "*.{js,css,png,svg,jpg,jpeg,gif}", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}
+```
+
+This configuration ensures that all static files, including images, are correctly served by Vercel.
 
 ## Webhook Integration
 
@@ -61,6 +87,7 @@ The app sends subscription data to a webhook endpoint (https://eoeyekcgqu06mpf.m
 - HTML5
 - CSS3
 - Vanilla JavaScript
+- Vercel Hosting
 
 # Webhook Tester
 
