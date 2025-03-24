@@ -14,6 +14,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const MAX_SOURCES = 3;
     const MAX_TOPICS = 3;
 
+    // Detect if device is mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Add focus/blur handlers for better mobile UX
+    if (isMobile) {
+        // Add small delay to handle virtual keyboard
+        const focusInputs = document.querySelectorAll('input, select');
+        focusInputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                setTimeout(() => {
+                    window.scrollTo(0, window.scrollY);
+                }, 300);
+            });
+        });
+    }
+
     // Validate email format
     function isValidEmail(email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -87,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cleanValue = cleanValue.split('?')[0];
             
             if (!isValidDomain(cleanValue)) {
-                alert('Please enter a valid website domain (e.g., forbes.cz)');
+                showFeedback('Please enter a valid website domain (e.g., forbes.cz)', 'error');
                 return false;
             }
         }
@@ -95,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Check limit
         const maxItems = isSource ? MAX_SOURCES : MAX_TOPICS;
         if (countTags(container) >= maxItems) {
-            alert(`You can only add up to ${maxItems} ${isSource ? 'sources' : 'topics'}`);
+            showFeedback(`You can only add up to ${maxItems} ${isSource ? 'sources' : 'topics'}`, 'error');
             return false;
         }
         
@@ -108,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!isSource && value.includes(',')) {
                     console.log(`Duplicate topic skipped: ${cleanValue}`);
                 } else {
-                    alert(`This ${isSource ? 'website' : 'topic'} is already added`);
+                    showFeedback(`This ${isSource ? 'website' : 'topic'} is already added`, 'error');
                 }
                 return false;
             }
@@ -117,13 +133,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create the tag
         const newTag = document.createElement('div');
         newTag.className = 'tag';
+        newTag.setAttribute('role', 'listitem');
         newTag.innerHTML = `
             ${cleanValue}
-            <button class="remove-btn">×</button>
+            <button class="remove-btn" aria-label="Remove ${cleanValue}" tabindex="0">×</button>
         `;
         
         // Add remove functionality
         const removeBtn = newTag.querySelector('.remove-btn');
+        
+        // Add keyboard support
+        removeBtn.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+        
         removeBtn.addEventListener('click', function() {
             this.parentElement.remove();
             // Check if we need to show input again (if it was hidden due to max limit)
@@ -132,6 +158,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // Remove error state if present
             container.classList.remove('error');
+            // Announce removal for screen readers
+            announceForScreenReader(`Removed ${cleanValue}`);
         });
         
         // Insert before the input
@@ -145,7 +173,142 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Remove error state if present
         container.classList.remove('error');
+        
+        // Announce for screen readers
+        announceForScreenReader(`Added ${cleanValue}`);
+        
         return true;
+    }
+    
+    // Create an accessible live region for screen reader announcements
+    function setupAccessibilityAnnouncements() {
+        // Create a live region if it doesn't exist
+        if (!document.getElementById('a11y-announcer')) {
+            const announcer = document.createElement('div');
+            announcer.id = 'a11y-announcer';
+            announcer.className = 'sr-only';
+            announcer.setAttribute('aria-live', 'polite');
+            announcer.setAttribute('aria-atomic', 'true');
+            document.body.appendChild(announcer);
+            
+            // Add the necessary CSS
+            const style = document.createElement('style');
+            style.textContent = `
+                .sr-only {
+                    position: absolute;
+                    width: 1px;
+                    height: 1px;
+                    padding: 0;
+                    margin: -1px;
+                    overflow: hidden;
+                    clip: rect(0, 0, 0, 0);
+                    white-space: nowrap;
+                    border: 0;
+                }
+                
+                .toast-container {
+                    position: fixed;
+                    bottom: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    z-index: 1000;
+                    width: 90%;
+                    max-width: 400px;
+                }
+                
+                .toast {
+                    padding: 12px 16px;
+                    border-radius: 4px;
+                    margin-bottom: 8px;
+                    font-size: 14px;
+                    animation: fadeInUp 0.3s ease-out, fadeOut 0.5s ease-in 2.5s forwards;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                }
+                
+                .toast-error {
+                    background-color: #fff2f0;
+                    border-left: 4px solid #ff4d4f;
+                    color: #cf1322;
+                }
+                
+                .toast-success {
+                    background-color: #f6ffed;
+                    border-left: 4px solid #52c41a;
+                    color: #389e0d;
+                }
+                
+                @keyframes fadeInUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                @keyframes fadeOut {
+                    from {
+                        opacity: 1;
+                    }
+                    to {
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Create a toast container for mobile-friendly feedback
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container';
+            toastContainer.id = 'toast-container';
+            document.body.appendChild(toastContainer);
+        }
+    }
+
+    // Setup accessibility as soon as the DOM is loaded
+    setupAccessibilityAnnouncements();
+    
+    // Announce to screen readers
+    function announceForScreenReader(message) {
+        const announcer = document.getElementById('a11y-announcer');
+        if (announcer) {
+            announcer.textContent = message;
+            // Clear after 5 seconds to prepare for next announcement
+            setTimeout(() => {
+                announcer.textContent = '';
+            }, 5000);
+        }
+    }
+    
+    // Show mobile-friendly feedback
+    function showFeedback(message, type = 'error') {
+        // Continue to use alert for desktop or fallback
+        if (!isMobile) {
+            alert(message);
+            return;
+        }
+        
+        // Use toast notification on mobile
+        const toastContainer = document.getElementById('toast-container');
+        if (toastContainer) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            
+            // Remove after animation completes
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+            
+            // Also announce for screen readers
+            announceForScreenReader(message);
+        } else {
+            // Fallback to alert if toast container doesn't exist
+            alert(message);
+        }
     }
 
     // Add new source tag when Enter is pressed
@@ -173,6 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
     emailInput.addEventListener('blur', function() {
         if (this.value.trim() !== '' && !isValidEmail(this.value.trim())) {
             this.classList.add('error');
+            showFeedback('Please enter a valid email address', 'error');
         } else {
             this.classList.remove('error');
         }
@@ -244,13 +408,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!isValid) {
-            alert(errorMessage);
+            showFeedback(errorMessage, 'error');
             return;
         }
 
         // Proceed with submission
         startButton.disabled = true;
         startButton.textContent = 'Sending...';
+        announceForScreenReader('Sending your subscription request. Please wait.');
         
         try {
             // Create well-formatted payload
@@ -284,7 +449,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Response:', response.status, responseData);
 
             if (response.ok) {
-                alert('Your news summary subscription has been created! You will receive daily updates at 8:00 AM UTC.');
+                showFeedback('Your news summary subscription has been created! You will receive daily updates at 8:00 AM UTC.', 'success');
+                announceForScreenReader('Success! Your news summary subscription has been created.');
                 startButton.textContent = 'Success!';
                 setTimeout(() => {
                     startButton.textContent = 'Start';
@@ -295,7 +461,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Error creating subscription. Please try again.');
+            showFeedback('Error creating subscription. Please try again.', 'error');
+            announceForScreenReader('Error creating subscription. Please try again.');
             startButton.textContent = 'Start';
             startButton.disabled = false;
         }

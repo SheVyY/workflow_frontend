@@ -3,17 +3,29 @@
     margin: 0;
     padding: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+}
+
+html {
+    /* Improve touch behavior */
+    touch-action: manipulation;
+    /* Base font size for rem calculations */
+    font-size: 16px;
 }
 
 body {
     background-color: #f7f7f7;
     color: #333;
     line-height: 1.6;
+    /* Better text rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .container {
     max-width: 600px;
-    margin: 2rem auto;
+    width: 100%;
+    margin: 1.5rem auto;
     padding: 0 1rem;
 }
 
@@ -39,14 +51,14 @@ body {
 }
 
 h1 {
-    font-size: 2.5rem;
+    font-size: 2.2rem; /* Slightly smaller on mobile */
     font-weight: 700;
     margin-bottom: 1rem;
     color: #000;
 }
 
 .description {
-    font-size: 1.1rem;
+    font-size: 1rem;
     margin-bottom: 1.5rem;
     color: #333;
 }
@@ -85,15 +97,23 @@ h2 {
     border-radius: 2rem;
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
+    /* Add some margin for better touch targets */
+    margin: 0.15rem 0;
 }
 
 .remove-btn {
     background: none;
     border: none;
-    font-size: 1.2rem;
+    font-size: 1.4rem; /* Larger for touch */
     cursor: pointer;
     margin-left: 0.5rem;
     color: #999;
+    /* Improve touch target size */
+    padding: 0.25rem;
+    min-width: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .remove-btn:hover {
@@ -104,19 +124,24 @@ h2 {
     border: none;
     background: transparent;
     padding: 0.5rem;
-    font-size: 0.9rem;
+    font-size: 1rem; /* Slightly larger for mobile */
     outline: none;
     min-width: 150px;
     flex-grow: 1;
+    /* Improve mobile input experience */
+    -webkit-appearance: none;
+    border-radius: 0;
 }
 
 .full-input {
     width: 100%;
-    padding: 0.75rem;
+    padding: 0.85rem; /* Larger for touch */
     border: 1px solid #e1e1e1;
     border-radius: 0.25rem;
     font-size: 1rem;
     outline: none;
+    /* Improve mobile input experience */
+    -webkit-appearance: none;
 }
 
 .select-wrapper {
@@ -126,13 +151,15 @@ h2 {
 
 select {
     width: 100%;
-    padding: 0.75rem;
+    padding: 0.85rem; /* Larger for touch */
     border: 1px solid #e1e1e1;
     border-radius: 0.25rem;
     background-color: #fff;
     font-size: 1rem;
     appearance: none;
     outline: none;
+    /* Improve mobile select experience */
+    -webkit-appearance: none;
 }
 
 .select-wrapper::after {
@@ -148,9 +175,10 @@ select {
 
 .start-btn {
     display: block;
-    width: 200px;
+    width: 100%; /* Full width on mobile */
+    max-width: 320px;
     margin: 2rem auto;
-    padding: 0.75rem 1.5rem;
+    padding: 0.85rem 1.5rem; /* Larger touch target */
     background-color: #b7eb8f;
     color: #333;
     border: none;
@@ -158,7 +186,14 @@ select {
     font-size: 1.1rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, transform 0.1s;
+    /* Improve touch feedback */
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.start-btn:active {
+    transform: scale(0.98); /* Subtle feedback on tap */
 }
 
 .start-btn:hover {
@@ -168,6 +203,7 @@ select {
 .start-btn:disabled {
     background-color: #cccccc;
     cursor: not-allowed;
+    transform: none;
 }
 
 /* Error states */
@@ -202,4 +238,38 @@ select.error {
     border-radius: 4px;
     font-size: 0.95rem;
     color: #0050b3;
+}
+
+/* Media queries for responsive design */
+@media (max-width: 480px) {
+    .container {
+        margin: 1rem auto;
+        padding: 0 0.75rem;
+    }
+    
+    h1 {
+        font-size: 1.8rem;
+    }
+    
+    .info-banner {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+    
+    .hint {
+        font-size: 0.8rem;
+    }
+    
+    .tag {
+        padding: 0.4rem 0.8rem;
+    }
+}
+
+/* Fix iOS form elements */
+@supports (-webkit-touch-callout: none) {
+    input, 
+    textarea,
+    select {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
 } 
