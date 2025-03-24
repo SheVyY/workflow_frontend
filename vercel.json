@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "name": "news-summary",
+  "public": true,
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "*.{js,css}", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/$1" }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false
+} 

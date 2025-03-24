@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Summary | Doflo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo-container">
+                <img src="doflo_logo.png" alt="Doflo Logo" class="logo">
+            </div>
+            <h1>News Summary</h1>
+        </header>
+        
+        <p class="description">
+            Get daily summaries of top articles on your chosen topics—key
+            insights, source links, no manual research needed. Enter website
+            URLs and specify your topics of interest to get a daily summary of
+            relevant articles.
+        </p>
+        
+        <div class="info-banner">
+            Daily updates will be sent at 8:00 AM UTC to your email.
+        </div>
+
+        <div class="section">
+            <h2>Media sources</h2>
+            <p class="hint">Enter website URLs without https:// (e.g., forbes.cz, bbc.com) - limit 3</p>
+            <div class="tags" id="sources-container">
+                <input type="text" id="source-input" placeholder="Add website..." class="tag-input">
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Topics and preferences</h2>
+            <p class="hint">Enter topics of interest, such as "AI", "Politics", "Economy", "Technology" - limit 3</p>
+            <div class="tags" id="topics-container">
+                <input type="text" id="topic-input" placeholder="Add topic..." class="tag-input">
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Language</h2>
+            <div class="select-wrapper">
+                <select id="language-select">
+                    <option value="">Select language</option>
+                    <option value="english">English</option>
+                    <option value="czech">Czech</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Email address</h2>
+            <p class="hint">We'll send your daily summaries to this email</p>
+            <input type="email" id="email-input" placeholder="Your email address" class="full-input">
+        </div>
+
+        <button id="start-btn" class="start-btn">Start</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
