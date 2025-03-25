@@ -6,6 +6,9 @@
     <meta name="theme-color" content="#f7f7f7">
     <meta name="description" content="Get daily summaries of top articles from your chosen news sources on topics that interest you.">
     <title>News Summary | Doflo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -29,27 +32,24 @@
         </div>
 
         <div class="section">
-            <h2>Media sources</h2>
-            <p class="hint">Enter website URLs without https:// (e.g., forbes.cz, bbc.com) - limit 3</p>
+            <h2>Media sources <span class="limit-text">max 3</span></h2>
             <div class="tags" id="sources-container" aria-label="Media sources container">
-                <input type="text" id="source-input" placeholder="Add website..." class="tag-input" aria-label="Add a media source">
+                <input type="text" id="source-input" placeholder="e.g. times.com, reuters.com" class="tag-input" aria-label="Add a media source">
             </div>
         </div>
 
         <div class="section">
-            <h2>Topics and preferences</h2>
-            <p class="hint">Enter topics of interest, such as "AI", "Politics", "Economy", "Technology" - limit 3</p>
+            <h2>Topics and preferences <span class="limit-text">max 3</span></h2>
             <div class="tags" id="topics-container" aria-label="Topics container">
-                <input type="text" id="topic-input" placeholder="Add topic..." class="tag-input" aria-label="Add a topic">
+                <input type="text" id="topic-input" placeholder="e.g. finance, culture, tech" class="tag-input" aria-label="Add a topic">
             </div>
         </div>
 
         <div class="section">
             <h2>Language</h2>
-            <p class="hint">Select the language in which you'll receive your news summaries</p>
             <div class="select-wrapper">
                 <select id="language-select" aria-label="Select language">
-                    <option value="">Select language</option>
+                    <option value="" disabled selected>e.g. English or Czech</option>
                     <option value="english">English</option>
                     <option value="czech">Czech</option>
                 </select>
@@ -58,8 +58,7 @@
 
         <div class="section">
             <h2>Email address</h2>
-            <p class="hint">We'll send your daily summaries to this email</p>
-            <input type="email" id="email-input" placeholder="Your email address" class="full-input" aria-label="Enter your email address" inputmode="email" autocomplete="email">
+            <input type="email" id="email-input" placeholder="e.g. john@example.com" class="full-input" aria-label="Enter your email address" inputmode="email" autocomplete="email">
         </div>
 
         <button id="start-btn" class="start-btn" aria-label="Create subscription">Start</button>

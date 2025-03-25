@@ -311,24 +311,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Add new source tag when Enter is pressed
-    sourceInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && this.value.trim() !== '') {
-            createTag(this.value, sourcesContainer, this, true);
-        }
-    });
-    
-    // Add new topic tag when Enter is pressed
-    topicInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && this.value.trim() !== '') {
-            processTopicInput(this.value);
+    // Add event listeners for source input
+    sourceInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            const value = sourceInput.value.trim();
+            if (value) {
+                // Split by comma and process each source
+                const sources = value.split(',');
+                for (const source of sources) {
+                    const cleanSource = source.trim();
+                    if (cleanSource) {
+                        createTag(cleanSource, sourcesContainer, sourceInput, true);
+                    }
+                }
+                sourceInput.value = '';
+            }
         }
     });
 
-    // Add input blur event to catch paste actions
-    topicInput.addEventListener('blur', function() {
-        if (this.value.trim() !== '') {
-            processTopicInput(this.value);
+    // Add event listeners for topic input
+    topicInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            processTopicInput(topicInput.value);
+            topicInput.value = '';
         }
     });
 

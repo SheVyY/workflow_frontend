@@ -2,7 +2,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
 }
 
@@ -16,10 +16,11 @@ html {
 body {
     background-color: #f7f7f7;
     color: #333;
-    line-height: 1.6;
+    line-height: 1.5;
     /* Better text rendering */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
 }
 
 .container {
@@ -51,15 +52,16 @@ body {
 }
 
 h1 {
-    font-size: 2.2rem; /* Slightly smaller on mobile */
-    font-weight: 700;
-    margin-bottom: 1rem;
+    font-size: 2.2rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
     color: #000;
+    letter-spacing: -0.02em;
 }
 
 .description {
     font-size: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
     color: #333;
 }
 
@@ -75,8 +77,19 @@ h1 {
 
 h2 {
     font-size: 1rem;
+    font-weight: 500;
     color: #666;
     margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    letter-spacing: -0.01em;
+}
+
+.limit-text {
+    font-size: 0.8rem;
+    color: #999;
+    font-weight: normal;
 }
 
 .tags {
@@ -85,20 +98,25 @@ h2 {
     gap: 0.5rem;
     align-items: center;
     min-height: 2.5rem;
-    border: 1px solid #e1e1e1;
-    border-radius: 0.25rem;
+    border: none;
+    border-bottom: 1px solid #e1e1e1;
+    border-radius: 0;
     padding: 0.5rem;
+    padding-left: 0;
+    background-color: transparent;
 }
 
 .tag {
     display: flex;
     align-items: center;
-    background-color: #f1f1f1;
+    background-color: #f7f7f7;
+    border: 1px solid #e1e1e1;
     border-radius: 2rem;
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
-    /* Add some margin for better touch targets */
     margin: 0.15rem 0;
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.01em;
 }
 
 .remove-btn {
@@ -124,48 +142,72 @@ h2 {
     border: none;
     background: transparent;
     padding: 0.5rem;
-    font-size: 1rem; /* Slightly larger for mobile */
+    padding-left: 0;
+    font-size: 1rem;
     outline: none;
-    min-width: 150px;
+    min-width: 200px;
     flex-grow: 1;
-    /* Improve mobile input experience */
     -webkit-appearance: none;
     border-radius: 0;
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.01em;
+}
+
+.tag-input::placeholder,
+.full-input::placeholder,
+select option:first-child {
+    color: #999;
+    font-style: normal;
 }
 
 .full-input {
     width: 100%;
-    padding: 0.85rem; /* Larger for touch */
-    border: 1px solid #e1e1e1;
-    border-radius: 0.25rem;
+    padding: 0.85rem 0;
+    border: none;
+    border-bottom: 1px solid #e1e1e1;
+    border-radius: 0;
     font-size: 1rem;
     outline: none;
-    /* Improve mobile input experience */
+    background-color: transparent;
     -webkit-appearance: none;
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.01em;
 }
 
 .select-wrapper {
     position: relative;
     width: 100%;
+    border-bottom: 1px solid #e1e1e1;
 }
 
 select {
     width: 100%;
-    padding: 0.85rem; /* Larger for touch */
-    border: 1px solid #e1e1e1;
-    border-radius: 0.25rem;
-    background-color: #fff;
+    padding: 0.85rem 0;
+    border: none;
+    border-radius: 0;
+    background-color: transparent;
     font-size: 1rem;
     appearance: none;
     outline: none;
-    /* Improve mobile select experience */
-    -webkit-appearance: none;
+    color: #333;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.01em;
+}
+
+select option:first-child {
+    font-style: italic;
+}
+
+select option {
+    font-style: normal;
+    color: #333;
 }
 
 .select-wrapper::after {
     content: "▼";
     position: absolute;
-    right: 1rem;
+    right: 0;
     top: 50%;
     transform: translateY(-50%);
     color: #999;
@@ -184,12 +226,14 @@ select {
     border: none;
     border-radius: 2rem;
     font-size: 1.1rem;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     transition: background-color 0.2s, transform 0.1s;
     /* Improve touch feedback */
     -webkit-appearance: none;
     -webkit-tap-highlight-color: transparent;
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.01em;
 }
 
 .start-btn:active {
@@ -208,26 +252,15 @@ select {
 
 /* Error states */
 .error {
-    border-color: #ff4d4f !important;
+    border-bottom-color: #ff4d4f !important;
 }
 
 .tags.error {
-    border-color: #ff4d4f;
-}
-
-.error::placeholder {
-    color: #ff4d4f;
-}
-
-select.error {
-    border-color: #ff4d4f;
-    color: #ff4d4f;
+    border-bottom-color: #ff4d4f;
 }
 
 .hint {
-    font-size: 0.85rem;
-    color: #777;
-    margin-bottom: 0.5rem;
+    display: none;
 }
 
 .info-banner {
@@ -272,4 +305,11 @@ select.error {
     select {
         font-size: 16px; /* Prevents zoom on iOS */
     }
+}
+
+/* Update focus states */
+.tag-input:focus,
+.full-input:focus,
+select:focus {
+    border-bottom-color: #333;
 } 
