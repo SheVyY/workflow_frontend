@@ -320,38 +320,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Show toast notification
     function showToast(message, type = 'success') {
-        initializeToastContainer();
-        const container = document.querySelector('.toast-container');
-        
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        
-        const messageSpan = document.createElement('span');
-        messageSpan.className = 'toast-message';
-        messageSpan.textContent = message;
-        
-        const closeButton = document.createElement('button');
-        closeButton.className = 'toast-close';
-        closeButton.innerHTML = '×';
-        closeButton.setAttribute('aria-label', 'Close notification');
-        
-        toast.appendChild(messageSpan);
-        toast.appendChild(closeButton);
+        toast.innerHTML = `
+            <span class="toast-message">${message}</span>
+            <button class="toast-close" aria-label="Close notification">×</button>
+        `;
+
+        const container = getToastContainer();
         container.appendChild(toast);
-        
-        // Handle close button click
+
+        // Close button handler
+        const closeButton = toast.querySelector('.toast-close');
         closeButton.addEventListener('click', () => {
             toast.classList.add('toast-exit');
             setTimeout(() => toast.remove(), 300);
         });
-        
-        // Auto remove after 5 seconds
+
+        // Auto remove after 8 seconds (increased from 5)
         setTimeout(() => {
             if (toast.parentElement) {
                 toast.classList.add('toast-exit');
                 setTimeout(() => toast.remove(), 300);
             }
-        }, 5000);
+        }, 8000);
     }
 
     // Add event listeners for source input
@@ -391,7 +383,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Handle start button click - send data to webhook
+    // Add keyboard navigation for tags
+    function setupTagKeyboardNavigation() {
+        document.addEventListener('keydown', (e) => {
+            if (e.target.closest('.tag')) {
+                const tag = e.target.closest('.tag');
+                const removeBtn = tag.querySelector('.remove-btn');
+                
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    e.preventDefault();
+                    removeBtn.click();
+                }
+            }
+        });
+    }
+
+    // Real-time email validation
+    emailInput.addEventListener('input', debounce(function() {
+        const email = this.value.trim();
+        if (email && !isValidEmail(email)) {
+            showFieldError(this, 'Please enter a valid email address');
+        } else {
+            clearFieldError(this);
+        }
+    }, 500));
+
+    // Debounce function for performance
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func.apply(this, args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Show loading state for inputs
+    function showLoadingState(element) {
+        element.classList.add('loading');
+    }
+
+    function hideLoadingState(element) {
+        element.classList.remove('loading');
+    }
+
+    // Update form submission with loading states
     startButton.addEventListener('click', async () => {
         const sources = Array.from(sourcesContainer.querySelectorAll('.tag'))
             .map(tag => tag.textContent.trim().replace('×', '').trim())
@@ -437,9 +476,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Disable button and show loading state
+        // Show loading states
         startButton.disabled = true;
         startButton.textContent = 'Setting up...';
+        showLoadingState(sourcesContainer);
+        showLoadingState(topicsContainer);
+        showLoadingState(emailInput);
 
         try {
             const response = await fetch(webhookUrl, {
@@ -468,8 +510,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Something went wrong. Please try again.', 'error');
         } finally {
+            // Hide loading states
             startButton.disabled = false;
             startButton.textContent = 'Start';
+            hideLoadingState(sourcesContainer);
+            hideLoadingState(topicsContainer);
+            hideLoadingState(emailInput);
         }
     });
+
+    // Initialize keyboard navigation
+    setupTagKeyboardNavigation();
 }); 

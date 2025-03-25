@@ -365,7 +365,7 @@ select:focus {
 /* Toast notifications */
 .toast-container {
     position: fixed;
-    bottom: 24px;
+    top: 24px;
     left: 24px;
     z-index: 1000;
     width: 360px;
@@ -425,11 +425,11 @@ select:focus {
 
 @keyframes slideInLeft {
     from {
-        transform: translateX(-100%);
+        transform: translateX(-100%) translateY(0);
         opacity: 0;
     }
     to {
-        transform: translateX(0);
+        transform: translateX(0) translateY(0);
         opacity: 1;
     }
 }
@@ -437,11 +437,11 @@ select:focus {
 @keyframes fadeOut {
     from {
         opacity: 1;
-        transform: translateX(0);
+        transform: translateX(0) translateY(0);
     }
     to {
         opacity: 0;
-        transform: translateX(-100%);
+        transform: translateX(-100%) translateY(0);
     }
 }
 
@@ -455,12 +455,102 @@ select:focus {
         left: 16px;
         right: 16px;
         width: auto;
-        bottom: 16px;
+        top: 16px;
         max-width: calc(100vw - 32px);
     }
     
     .toast {
         padding: 12px;
         width: 100%;
+    }
+}
+
+/* Loading states */
+.loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: linear-gradient(90deg, #b7eb8f 0%, #52c41a 50%, #b7eb8f 100%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Focus styles */
+.tag-input:focus,
+.full-input:focus,
+select:focus {
+    border-bottom-color: #52c41a;
+    border-bottom-width: 2px;
+    margin-bottom: -1px;
+}
+
+.tag:focus-within {
+    outline: 2px solid #52c41a;
+    outline-offset: 1px;
+}
+
+.remove-btn:focus {
+    outline: none;
+    color: #ff4d4f;
+}
+
+.remove-btn:focus-visible {
+    outline: 2px solid #52c41a;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.start-btn:focus {
+    outline: none;
+}
+
+.start-btn:focus-visible {
+    outline: 2px solid #52c41a;
+    outline-offset: 2px;
+}
+
+/* Disabled state improvements */
+.start-btn:disabled {
+    background-color: #f0f0f0;
+    color: #999;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Add transition for smoother interactions */
+.tag,
+.remove-btn,
+.tag-input,
+.full-input,
+select,
+.start-btn {
+    transition: all 0.2s ease;
+}
+
+/* Improve mobile touch feedback */
+@media (hover: none) {
+    .tag:active {
+        transform: scale(0.98);
+    }
+    
+    .remove-btn:active {
+        transform: scale(0.9);
     }
 } 
