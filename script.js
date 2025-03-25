@@ -309,33 +309,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Show mobile-friendly feedback
-    function showFeedback(message, type = 'error') {
-        // Continue to use alert for desktop or fallback
-        if (!isMobile) {
-            alert(message);
-            return;
+    // Initialize toast container
+    function initializeToastContainer() {
+        if (!document.querySelector('.toast-container')) {
+            const container = document.createElement('div');
+            container.className = 'toast-container';
+            document.body.appendChild(container);
         }
+    }
+
+    // Show toast notification
+    function showToast(message, type = 'success') {
+        initializeToastContainer();
+        const container = document.querySelector('.toast-container');
         
-        // Use toast notification on mobile
-        const toastContainer = document.getElementById('toast-container');
-        if (toastContainer) {
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            toast.textContent = message;
-            toastContainer.appendChild(toast);
-            
-            // Remove after animation completes
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
-            
-            // Also announce for screen readers
-            announceForScreenReader(message);
-        } else {
-            // Fallback to alert if toast container doesn't exist
-            alert(message);
-        }
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        
+        const messageSpan = document.createElement('span');
+        messageSpan.className = 'toast-message';
+        messageSpan.textContent = message;
+        
+        const closeButton = document.createElement('button');
+        closeButton.className = 'toast-close';
+        closeButton.innerHTML = '×';
+        closeButton.setAttribute('aria-label', 'Close notification');
+        
+        toast.appendChild(messageSpan);
+        toast.appendChild(closeButton);
+        container.appendChild(toast);
+        
+        // Handle close button click
+        closeButton.addEventListener('click', () => {
+            toast.classList.add('toast-exit');
+            setTimeout(() => toast.remove(), 300);
+        });
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 5000);
     }
 
     // Add event listeners for source input
@@ -421,59 +437,39 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Proceed with submission
+        // Disable button and show loading state
         startButton.disabled = true;
-        startButton.textContent = 'Sending...';
-        announceForScreenReader('Sending your subscription request. Please wait.');
-        
+        startButton.textContent = 'Setting up...';
+
         try {
-            // Create well-formatted payload
-            const payload = {
-                subscription: {
-                    email: email,
-                    sources: sources,
-                    topics: topics,
-                    language: language,
-                    schedule: "8AM_UTC"
-                },
-                metadata: {
-                    timestamp: new Date().toISOString(),
-                    client: "web",
-                    version: "1.0.0"
-                }
-            };
-
-            console.log('Sending data to webhook:', JSON.stringify(payload, null, 2));
-
-            // Send to webhook
             const response = await fetch(webhookUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    sources: sources.map(source => source.startsWith('http') ? source : `https://${source}`),
+                    topics,
+                    language,
+                    email
+                })
             });
 
-            const responseData = await response.text();
-            console.log('Response:', response.status, responseData);
-
             if (response.ok) {
-                showFeedback('Your news summary subscription has been created! You will receive daily updates at 8:00 AM UTC.', 'success');
-                announceForScreenReader('Success! Your news summary subscription has been created.');
-                startButton.textContent = 'Success!';
-                setTimeout(() => {
-                    startButton.textContent = 'Start';
-                    startButton.disabled = false;
-                }, 2000);
+                showToast('Your news summary has been set up successfully!', 'success');
+                // Reset form
+                sourcesContainer.querySelectorAll('.tag').forEach(tag => tag.remove());
+                topicsContainer.querySelectorAll('.tag').forEach(tag => tag.remove());
+                languageSelect.value = '';
+                emailInput.value = '';
             } else {
-                throw new Error(`Server responded with status: ${response.status}`);
+                throw new Error('Failed to set up news summary');
             }
         } catch (error) {
-            console.error('Error:', error);
-            showFeedback('Error creating subscription. Please try again.', 'error');
-            announceForScreenReader('Error creating subscription. Please try again.');
-            startButton.textContent = 'Start';
+            showToast('Something went wrong. Please try again.', 'error');
+        } finally {
             startButton.disabled = false;
+            startButton.textContent = 'Start';
         }
     });
 }); 
