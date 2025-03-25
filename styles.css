@@ -67,8 +67,9 @@ h1 {
 
 .section {
     margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
+    padding-bottom: 0;
     border-bottom: none;
+    position: relative;
 }
 
 .section:not(:last-child) {
@@ -273,7 +274,30 @@ select option {
     color: #0050b3;
 }
 
-/* Media queries for responsive design */
+.error-message {
+    color: #ff4d4f;
+    font-size: 0.85rem;
+    margin-top: 0.35rem;
+    display: none;
+}
+
+.error .error-message {
+    display: block;
+}
+
+.tags.error,
+.full-input.error,
+select.error,
+.select-wrapper.error {
+    border-bottom-color: #ff4d4f;
+}
+
+/* Remove the right margin since errors are now below */
+.section h2 {
+    margin-right: 0;
+}
+
+/* Mobile adjustments */
 @media (max-width: 480px) {
     .container {
         margin: 1rem auto;
@@ -296,6 +320,14 @@ select option {
     .tag {
         padding: 0.4rem 0.8rem;
     }
+
+    .error-message {
+        margin-top: 0.25rem;
+    }
+
+    .section h2 {
+        margin-right: 0;
+    }
 }
 
 /* Fix iOS form elements */
@@ -312,4 +344,20 @@ select option {
 .full-input:focus,
 select:focus {
     border-bottom-color: #333;
+}
+
+/* Ensure proper spacing between sections with errors */
+.section {
+    margin-bottom: 1.5rem;
+}
+
+.section.error {
+    margin-bottom: 2rem;
+}
+
+/* Add some space after inputs when there's an error */
+.tags,
+.full-input,
+.select-wrapper {
+    margin-bottom: 0.25rem;
 } 

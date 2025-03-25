@@ -89,48 +89,96 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Function to create and add a tag
+    // Function to show error for a specific field
+    function showFieldError(element, message) {
+        const section = element.closest('.section');
+        if (section) {
+            section.classList.add('error');
+            
+            // For select elements, add error class to the wrapper
+            if (element.tagName === 'SELECT') {
+                element.closest('.select-wrapper').classList.add('error');
+            } else {
+                element.classList.add('error');
+            }
+            
+            // Find existing error message or create new one
+            let errorMessage = section.querySelector('.error-message');
+            if (!errorMessage) {
+                errorMessage = document.createElement('div');
+                errorMessage.className = 'error-message';
+                
+                // Insert after the input container
+                const container = element.tagName === 'SELECT' 
+                    ? element.closest('.select-wrapper')
+                    : (element.classList.contains('tag-input') ? element.closest('.tags') : element);
+                    
+                container.insertAdjacentElement('afterend', errorMessage);
+            }
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            
+            // For screen readers
+            announceForScreenReader(message);
+        }
+    }
+
+    // Function to clear error for a specific field
+    function clearFieldError(element) {
+        const section = element.closest('.section');
+        if (section) {
+            section.classList.remove('error');
+            
+            // For select elements, remove error class from the wrapper
+            if (element.tagName === 'SELECT') {
+                element.closest('.select-wrapper').classList.remove('error');
+            } else {
+                element.classList.remove('error');
+            }
+            
+            const errorMessage = section.querySelector('.error-message');
+            if (errorMessage) {
+                errorMessage.remove();
+            }
+        }
+    }
+
+    // Update createTag function to use inline errors
     function createTag(value, container, input, isSource = false) {
-        // If this is a source, clean and validate domain
         let cleanValue = value.trim();
         
         if (isSource) {
             cleanValue = value.toLowerCase();
-            // Remove any protocol (http://, https://)
             cleanValue = cleanValue.replace(/^(https?:\/\/)?(www\.)?/, '');
-            // Remove any path or query parameters
             cleanValue = cleanValue.split('/')[0]; 
             cleanValue = cleanValue.split('?')[0];
             
             if (!isValidDomain(cleanValue)) {
-                showFeedback('Please enter a valid website domain (e.g., forbes.cz)', 'error');
+                showFieldError(container, 'Please enter a valid website domain');
                 return false;
             }
         }
         
-        // Check limit
         const maxItems = isSource ? MAX_SOURCES : MAX_TOPICS;
         if (countTags(container) >= maxItems) {
-            showFeedback(`You can only add up to ${maxItems} ${isSource ? 'sources' : 'topics'}`, 'error');
+            showFieldError(container, `Maximum ${maxItems} ${isSource ? 'sources' : 'topics'} allowed`);
             return false;
         }
         
-        // Check if this value already exists
+        // Check for duplicates
         const existingTags = container.querySelectorAll('.tag');
         for (const tag of existingTags) {
             const existingValue = tag.textContent.trim().replace('×', '').trim();
             if (existingValue.toLowerCase() === cleanValue.toLowerCase()) {
-                // Only show alert if this is not part of a batch operation
-                if (!isSource && value.includes(',')) {
-                    console.log(`Duplicate topic skipped: ${cleanValue}`);
-                } else {
-                    showFeedback(`This ${isSource ? 'website' : 'topic'} is already added`, 'error');
-                }
+                showFieldError(container, `This ${isSource ? 'source' : 'topic'} is already added`);
                 return false;
             }
         }
+
+        // If we get here, clear any existing errors
+        clearFieldError(container);
         
-        // Create the tag
+        // Create and add the tag
         const newTag = document.createElement('div');
         newTag.className = 'tag';
         newTag.setAttribute('role', 'listitem');
@@ -141,45 +189,24 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Add remove functionality
         const removeBtn = newTag.querySelector('.remove-btn');
-        
-        // Add keyboard support
-        removeBtn.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                this.click();
-            }
-        });
-        
         removeBtn.addEventListener('click', function() {
             this.parentElement.remove();
-            // Check if we need to show input again (if it was hidden due to max limit)
             if (countTags(container) < maxItems) {
                 input.style.display = '';
+                clearFieldError(container);
             }
-            // Remove error state if present
-            container.classList.remove('error');
-            // Announce removal for screen readers
-            announceForScreenReader(`Removed ${cleanValue}`);
         });
         
-        // Insert before the input
         container.insertBefore(newTag, input);
         input.value = '';
         
-        // Hide input if we reached the limit
         if (countTags(container) >= maxItems) {
             input.style.display = 'none';
         }
         
-        // Remove error state if present
-        container.classList.remove('error');
-        
-        // Announce for screen readers
-        announceForScreenReader(`Added ${cleanValue}`);
-        
         return true;
     }
-    
+
     // Create an accessible live region for screen reader announcements
     function setupAccessibilityAnnouncements() {
         // Create a live region if it doesn't exist
@@ -342,80 +369,55 @@ document.addEventListener('DOMContentLoaded', () => {
     // Email validation on blur
     emailInput.addEventListener('blur', function() {
         if (this.value.trim() !== '' && !isValidEmail(this.value.trim())) {
-            this.classList.add('error');
-            showFeedback('Please enter a valid email address', 'error');
+            showFieldError(this, 'Please enter a valid email address');
         } else {
-            this.classList.remove('error');
+            clearFieldError(this);
         }
     });
 
     // Handle start button click - send data to webhook
     startButton.addEventListener('click', async () => {
-        // Collect all sources
-        const sourceTags = sourcesContainer.querySelectorAll('.tag');
-        const sources = Array.from(sourceTags)
-            .map(tag => {
-                // Get the clean domain name
-                const domain = tag.textContent.trim().replace('×', '').trim();
-                // Ensure it has https:// prefix for the backend
-                return domain.startsWith('http') ? domain : `https://${domain}`;
-            })
+        const sources = Array.from(sourcesContainer.querySelectorAll('.tag'))
+            .map(tag => tag.textContent.trim().replace('×', '').trim())
             .filter(source => source !== '');
 
-        // Get topics
-        const topicTags = topicsContainer.querySelectorAll('.tag');
-        const topics = Array.from(topicTags)
+        const topics = Array.from(topicsContainer.querySelectorAll('.tag'))
             .map(tag => tag.textContent.trim().replace('×', '').trim())
             .filter(topic => topic !== '');
 
-        // Get language
         const language = languageSelect.value;
-
-        // Get email
         const email = emailInput.value.trim();
-
-        // Validate form
         let isValid = true;
-        let errorMessage = '';
 
+        // Clear all existing errors first
+        document.querySelectorAll('.error-message').forEach(el => el.remove());
+        document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+
+        // Validate each field
         if (sources.length === 0) {
             isValid = false;
-            errorMessage += 'Please add at least one media source.\n';
-            sourcesContainer.classList.add('error');
-        } else {
-            sourcesContainer.classList.remove('error');
+            showFieldError(sourcesContainer, 'Please add at least one media source');
         }
 
         if (topics.length === 0) {
             isValid = false;
-            errorMessage += 'Please add at least one topic.\n';
-            topicsContainer.classList.add('error');
-        } else {
-            topicsContainer.classList.remove('error');
+            showFieldError(topicsContainer, 'Please add at least one topic');
         }
 
         if (!language) {
             isValid = false;
-            errorMessage += 'Please select a language.\n';
-            languageSelect.classList.add('error');
-        } else {
-            languageSelect.classList.remove('error');
+            showFieldError(languageSelect, 'Please select a language');
         }
 
         if (!email) {
             isValid = false;
-            errorMessage += 'Please enter your email address.\n';
-            emailInput.classList.add('error');
+            showFieldError(emailInput, 'Please enter your email address');
         } else if (!isValidEmail(email)) {
             isValid = false;
-            errorMessage += 'Please enter a valid email address.\n';
-            emailInput.classList.add('error');
-        } else {
-            emailInput.classList.remove('error');
+            showFieldError(emailInput, 'Please enter a valid email address');
         }
 
         if (!isValid) {
-            showFeedback(errorMessage, 'error');
             return;
         }
 
