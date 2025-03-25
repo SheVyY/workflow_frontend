@@ -309,13 +309,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Initialize toast container
-    function initializeToastContainer() {
-        if (!document.querySelector('.toast-container')) {
-            const container = document.createElement('div');
+    // Get or create toast container
+    function getToastContainer() {
+        let container = document.querySelector('.toast-container');
+        if (!container) {
+            container = document.createElement('div');
             container.className = 'toast-container';
             document.body.appendChild(container);
         }
+        return container;
     }
 
     // Show toast notification
@@ -337,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => toast.remove(), 300);
         });
 
-        // Auto remove after 8 seconds (increased from 5)
+        // Auto remove after 8 seconds
         setTimeout(() => {
             if (toast.parentElement) {
                 toast.classList.add('toast-exit');
@@ -345,6 +347,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 8000);
     }
+
+    // Track form submission status
+    let isSubmitting = false;
 
     // Add event listeners for source input
     sourceInput.addEventListener('keydown', (e) => {
@@ -430,8 +435,13 @@ document.addEventListener('DOMContentLoaded', () => {
         element.classList.remove('loading');
     }
 
-    // Update form submission with loading states
+    // Update form submission with loading states and submission tracking
     startButton.addEventListener('click', async () => {
+        // Prevent multiple submissions
+        if (isSubmitting) {
+            return;
+        }
+
         const sources = Array.from(sourcesContainer.querySelectorAll('.tag'))
             .map(tag => tag.textContent.trim().replace('×', '').trim())
             .filter(source => source !== '');
@@ -476,6 +486,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Set submitting state
+        isSubmitting = true;
+
         // Show loading states
         startButton.disabled = true;
         startButton.textContent = 'Setting up...';
@@ -504,15 +517,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 topicsContainer.querySelectorAll('.tag').forEach(tag => tag.remove());
                 languageSelect.value = '';
                 emailInput.value = '';
+                
+                // Disable the start button permanently after successful submission
+                startButton.disabled = true;
+                startButton.textContent = 'Submitted';
+                startButton.classList.add('submitted');
             } else {
                 throw new Error('Failed to set up news summary');
             }
         } catch (error) {
             showToast('Something went wrong. Please try again.', 'error');
-        } finally {
-            // Hide loading states
+            // Reset submitting state on error so user can try again
+            isSubmitting = false;
             startButton.disabled = false;
             startButton.textContent = 'Start';
+        } finally {
+            // Hide loading states
             hideLoadingState(sourcesContainer);
             hideLoadingState(topicsContainer);
             hideLoadingState(emailInput);

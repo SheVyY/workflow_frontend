@@ -374,53 +374,60 @@ select:focus {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    gap: 8px;
 }
 
 .toast {
-    background-color: white;
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: white;
+    border-radius: 4px;
+    padding: 12px 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    animation: slideInLeft 0.3s ease-out;
-    pointer-events: all;
-    transform-origin: left center;
     width: 100%;
+    pointer-events: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: slideInLeft 0.3s ease-out;
 }
 
-.toast-success {
-    border-left: 4px solid #52c41a;
-}
-
-.toast-error {
-    border-left: 4px solid #ff4d4f;
+.toast.toast-exit {
+    animation: fadeOut 0.3s ease-in forwards;
 }
 
 .toast-message {
-    color: #333;
-    font-size: 0.95rem;
     margin-right: 12px;
+    flex: 1;
+    font-size: 0.95rem;
     line-height: 1.4;
+}
+
+.toast-message strong {
+    font-weight: 600;
 }
 
 .toast-close {
     background: none;
     border: none;
-    color: #999;
+    padding: 4px 8px;
     cursor: pointer;
-    padding: 4px;
-    font-size: 1.2rem;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    font-size: 18px;
+    color: #666;
+    opacity: 0.7;
+    transition: opacity 0.2s;
 }
 
 .toast-close:hover {
-    color: #666;
+    opacity: 1;
+}
+
+.toast-success {
+    border-left: 4px solid #52c41a;
+    color: #333;
+}
+
+.toast-error {
+    border-left: 4px solid #ff4d4f;
+    color: #cf1322;
 }
 
 @keyframes slideInLeft {
@@ -445,10 +452,6 @@ select:focus {
     }
 }
 
-.toast-exit {
-    animation: fadeOut 0.3s ease-in forwards;
-}
-
 /* Mobile adjustments for toast */
 @media (max-width: 480px) {
     .toast-container {
@@ -463,6 +466,18 @@ select:focus {
         padding: 12px;
         width: 100%;
     }
+}
+
+/* Submitted button state */
+.start-btn.submitted {
+    background-color: #52c41a;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.start-btn.submitted:hover {
+    background-color: #52c41a;
+    opacity: 0.8;
 }
 
 /* Loading states */
