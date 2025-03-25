@@ -66,14 +66,14 @@ h1 {
 }
 
 .section {
-    margin-bottom: 3rem;
+    margin-bottom: 2.5rem;
     padding-bottom: 0;
     border-bottom: none;
     position: relative;
 }
 
 .section:not(:last-child) {
-    margin-bottom: 3rem;
+    margin-bottom: 2.5rem;
 }
 
 h2 {
@@ -220,7 +220,7 @@ select option {
     display: block;
     width: 100%; /* Full width on mobile */
     max-width: 320px;
-    margin: 3rem auto;
+    margin: 2.5rem auto;
     padding: 0.85rem 1.5rem; /* Larger touch target */
     background-color: #b7eb8f;
     color: #333;
@@ -348,11 +348,11 @@ select:focus {
 
 /* Ensure proper spacing between sections with errors */
 .section {
-    margin-bottom: 3rem;
+    margin-bottom: 2.5rem;
 }
 
 .section.error {
-    margin-bottom: 3.5rem;
+    margin-bottom: 3rem;
 }
 
 /* Add some space after inputs when there's an error */
