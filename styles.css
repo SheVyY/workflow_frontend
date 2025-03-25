@@ -399,6 +399,7 @@ select:focus {
     flex: 1;
     font-size: 0.95rem;
     line-height: 1.4;
+    color: #333;
 }
 
 .toast-message strong {
@@ -427,7 +428,7 @@ select:focus {
 
 .toast-error {
     border-left: 4px solid #ff4d4f;
-    color: #cf1322;
+    color: #333;
 }
 
 @keyframes slideInLeft {
