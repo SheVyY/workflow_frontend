@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const languageSelect = document.getElementById('language-select');
     
     // Webhook URL
-    const webhookUrl = 'https://eoeyekcgqu06mpf.m.pipedream.net';
+    const webhookUrl = 'https://eoj7hczhcudxukm.m.pipedream.net';
     
     // Limits
     const MAX_SOURCES = 3;
