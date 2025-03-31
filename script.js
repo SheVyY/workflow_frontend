@@ -14,6 +14,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const MAX_SOURCES = 3;
     const MAX_TOPICS = 3;
 
+    // Function to get yesterday's date in YYYY-MM-DD format
+    function getYesterdayUTC() {
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+        
+        // Format date as YYYY-MM-DD
+        const year = yesterday.getUTCFullYear();
+        const month = String(yesterday.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(yesterday.getUTCDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}`;
+    }
+
     // Detect if device is mobile
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
@@ -506,7 +520,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     sources: sources.map(source => source.startsWith('http') ? source : `https://${source}`),
                     topics,
                     language,
-                    email
+                    email,
+                    date: getYesterdayUTC()
                 })
             });
 
