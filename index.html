@@ -32,7 +32,7 @@
         </div>
 
         <div class="section">
-            <h2>Media sources <span class="limit-text">max 3</span></h2>
+            <h2>Media sources (EN) <span class="limit-text">max 3</span></h2>
             <div class="tags" id="sources-container" aria-label="Media sources container">
                 <input type="text" id="source-input" placeholder="e.g. times.com, reuters.com" class="tag-input" aria-label="Add a media source">
             </div>
@@ -41,7 +41,23 @@
         <div class="section">
             <h2>Topics and preferences <span class="limit-text">max 3</span></h2>
             <div class="tags" id="topics-container" aria-label="Topics container">
-                <input type="text" id="topic-input" placeholder="e.g. finance, culture, tech" class="tag-input" aria-label="Add a topic">
+                <div class="select-wrapper">
+                    <select id="topic-select" aria-label="Select topic">
+                        <option value="" disabled selected>Select a topic</option>
+                        <option value="technology">Technology</option>
+                        <option value="business">Business</option>
+                        <option value="finance">Finance</option>
+                        <option value="politics">Politics</option>
+                        <option value="science">Science</option>
+                        <option value="health">Health</option>
+                        <option value="environment">Environment</option>
+                        <option value="education">Education</option>
+                        <option value="sports">Sports</option>
+                        <option value="entertainment">Entertainment</option>
+                        <option value="culture">Culture</option>
+                        <option value="world">World News</option>
+                    </select>
+                </div>
             </div>
         </div>
 

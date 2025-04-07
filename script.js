@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const sourceInput = document.getElementById('source-input');
-    const topicInput = document.getElementById('topic-input');
+    const topicSelect = document.getElementById('topic-select');
     const emailInput = document.getElementById('email-input');
     const sourcesContainer = document.getElementById('sources-container');
     const topicsContainer = document.getElementById('topics-container');
@@ -56,6 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
         return domainRegex.test(domain);
     }
+
+    // Validate if source is English-only
+    function isEnglishSource(domain) {
+        // Only allow English sources
+        const englishTLDs = ['.com', '.org', '.net', '.io', '.co', '.uk', '.us', '.ca', '.au', '.nz'];
+        return englishTLDs.some(tld => domain.toLowerCase().endsWith(tld));
+    }
     
     // Count current tags in a container
     function countTags(container) {
@@ -91,14 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const topic of topics) {
                 const cleanTopic = cleanTopicText(topic);
                 if (cleanTopic) {
-                    createTag(cleanTopic, topicsContainer, topicInput, false);
+                    createTag(cleanTopic, topicsContainer, topicSelect, false);
                 }
             }
         } else {
             // Single topic
             const cleanTopic = cleanTopicText(inputValue);
             if (cleanTopic) {
-                createTag(cleanTopic, topicsContainer, topicInput, false);
+                createTag(cleanTopic, topicsContainer, topicSelect, false);
             }
         }
     }
@@ -169,6 +176,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (!isValidDomain(cleanValue)) {
                 showFieldError(container, 'Please enter a valid website domain');
+                return false;
+            }
+
+            if (!isEnglishSource(cleanValue)) {
+                showFieldError(container, 'Only English sources are allowed. Please use sources with .com, .org, .net, .io, .co, .uk, .us, .ca, .au, or .nz domains.');
                 return false;
             }
         }
@@ -384,12 +396,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Add event listeners for topic input
-    topicInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            processTopicInput(topicInput.value);
-            topicInput.value = '';
+    // Handle topic selection
+    topicSelect.addEventListener('change', function() {
+        if (this.value) {
+            createTag(this.value, topicsContainer, topicSelect, false);
+            this.value = ''; // Reset the select
         }
     });
 
@@ -517,7 +528,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    sources: sources.map(source => source.startsWith('http') ? source : `https://${source}`),
+                    sources: sources.map(source => ({
+                        url: source.startsWith('http') ? source : `https://${source}`,
+                        method: "GET"
+                    })),
                     topics,
                     language,
                     email,

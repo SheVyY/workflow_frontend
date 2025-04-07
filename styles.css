@@ -569,4 +569,46 @@ select,
     .remove-btn:active {
         transform: scale(0.9);
     }
+}
+
+.tags .select-wrapper {
+    border: none;
+    margin: 0;
+    padding: 0;
+    width: auto;
+    min-width: 200px;
+}
+
+.tags .select-wrapper::after {
+    display: none;
+}
+
+.tags select {
+    padding: 0.5rem;
+    padding-left: 0;
+    font-size: 1rem;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.tags select:focus {
+    outline: none;
+}
+
+.tags select option {
+    background: white;
+    color: #333;
+    padding: 0.5rem;
+}
+
+/* Mobile adjustments for topic select */
+@media (max-width: 480px) {
+    .tags .select-wrapper {
+        min-width: 150px;
+    }
 } 
