@@ -11,7 +11,7 @@ A simple app that provides daily summaries of top articles from selected news so
 
 ## Usage
 
-1. **Media Sources**: Enter up to 3 website domains (e.g., forbes.cz, bbc.com)
+1. **Media Sources**: Enter up to 3 English-language website domains (e.g., bbc.com, reuters.com). Note: Only English-language sources are supported as our scraper is optimized for English content.
 2. **Topics**: Add up to 3 topics of interest (e.g., AI, Politics, Technology)
 3. **Language**: Select your preferred language for receiving the summaries
 4. **Email**: Enter your email address to receive the summaries
@@ -69,7 +69,16 @@ The app sends subscription data to a webhook endpoint (https://eoeyekcgqu06mpf.m
 {
   "subscription": {
     "email": "user@example.com",
-    "sources": ["https://example.com", "https://news.com"],
+    "sources": [
+      {
+        "url": "https://example.com",
+        "method": "GET"
+      },
+      {
+        "url": "https://news.com",
+        "method": "GET"
+      }
+    ],
     "topics": ["technology", "business"],
     "language": "english",
     "schedule": "8AM_UTC"

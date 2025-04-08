@@ -36,28 +36,63 @@
             <div class="tags" id="sources-container" aria-label="Media sources container">
                 <input type="text" id="source-input" placeholder="e.g. times.com, reuters.com" class="tag-input" aria-label="Add a media source">
             </div>
+            <div class="error-message" aria-live="polite"></div>
         </div>
 
         <div class="section">
             <h2>Topics and preferences <span class="limit-text">max 3</span></h2>
-            <div class="tags" id="topics-container" aria-label="Topics container">
-                <div class="select-wrapper">
-                    <select id="topic-select" aria-label="Select topic">
-                        <option value="" disabled selected>Select a topic</option>
-                        <option value="technology">Technology</option>
-                        <option value="business">Business</option>
-                        <option value="finance">Finance</option>
-                        <option value="politics">Politics</option>
-                        <option value="science">Science</option>
-                        <option value="health">Health</option>
-                        <option value="environment">Environment</option>
-                        <option value="education">Education</option>
-                        <option value="sports">Sports</option>
-                        <option value="entertainment">Entertainment</option>
-                        <option value="culture">Culture</option>
-                        <option value="world">World News</option>
-                    </select>
+            <div class="form-group">
+                <div class="topics-grid">
+                    <label class="topic-checkbox">
+                        <input type="checkbox" value="technology">
+                        <span>Technology</span>
+                    </label>
+                    <label class="topic-checkbox">
+                        <input type="checkbox" value="business">
+                        <span>Business</span>
+                    </label>
+                    <label class="topic-checkbox">
+                        <input type="checkbox" value="finance">
+                        <span>Finance</span>
+                    </label>
+                    <label class="topic-checkbox">
+                        <input type="checkbox" value="politics">
+                        <span>Politics</span>
+                    </label>
+                    <label class="topic-checkbox">
+                        <input type="checkbox" value="science">
+                        <span>Science</span>
+                    </label>
+                    <label class="topic-checkbox">
+                        <input type="checkbox" value="health">
+                        <span>Health</span>
+                    </label>
+                    <label class="topic-checkbox">
+                        <input type="checkbox" value="environment">
+                        <span>Environment</span>
+                    </label>
+                    <label class="topic-checkbox">
+                        <input type="checkbox" value="education">
+                        <span>Education</span>
+                    </label>
+                    <label class="topic-checkbox">
+                        <input type="checkbox" value="sports">
+                        <span>Sports</span>
+                    </label>
+                    <label class="topic-checkbox">
+                        <input type="checkbox" value="entertainment">
+                        <span>Entertainment</span>
+                    </label>
+                    <label class="topic-checkbox">
+                        <input type="checkbox" value="culture">
+                        <span>Culture</span>
+                    </label>
+                    <label class="topic-checkbox">
+                        <input type="checkbox" value="world-news">
+                        <span>World News</span>
+                    </label>
                 </div>
+                <div class="tags" id="topics-container"></div>
             </div>
         </div>
 
@@ -65,7 +100,7 @@
             <h2>Language</h2>
             <div class="select-wrapper">
                 <select id="language-select" aria-label="Select language">
-                    <option value="" disabled selected>e.g. English, Czech</option>
+                    <option value="" disabled selected>Select language</option>
                     <option value="english">English</option>
                     <option value="czech">Czech</option>
                 </select>

@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     const sourceInput = document.getElementById('source-input');
-    const topicSelect = document.getElementById('topic-select');
     const emailInput = document.getElementById('email-input');
     const sourcesContainer = document.getElementById('sources-container');
     const topicsContainer = document.getElementById('topics-container');
@@ -98,14 +97,14 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const topic of topics) {
                 const cleanTopic = cleanTopicText(topic);
                 if (cleanTopic) {
-                    createTag(cleanTopic, topicsContainer, topicSelect, false);
+                    createTag(cleanTopic, 'topic');
                 }
             }
         } else {
             // Single topic
             const cleanTopic = cleanTopicText(inputValue);
             if (cleanTopic) {
-                createTag(cleanTopic, topicsContainer, topicSelect, false);
+                createTag(cleanTopic, 'topic');
             }
         }
     }
@@ -165,72 +164,90 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Update createTag function to use inline errors
-    function createTag(value, container, input, isSource = false) {
-        let cleanValue = value.trim();
-        
-        if (isSource) {
-            cleanValue = value.toLowerCase();
+    function createTag(value, type) {
+        if (type === 'source') {
+            let cleanValue = value.toLowerCase();
             cleanValue = cleanValue.replace(/^(https?:\/\/)?(www\.)?/, '');
             cleanValue = cleanValue.split('/')[0]; 
             cleanValue = cleanValue.split('?')[0];
             
             if (!isValidDomain(cleanValue)) {
-                showFieldError(container, 'Please enter a valid website domain');
-                return false;
+                showFieldError(sourcesContainer, 'Please enter a valid website domain');
+                return;
             }
 
             if (!isEnglishSource(cleanValue)) {
-                showFieldError(container, 'Only English sources are allowed. Please use sources with .com, .org, .net, .io, .co, .uk, .us, .ca, .au, or .nz domains.');
-                return false;
+                showFieldError(sourcesContainer, 'Only English sources are allowed. Please use sources with .com, .org, .net, .io, .co, .uk, .us, .ca, .au, or .nz domains.');
+                return;
             }
-        }
-        
-        const maxItems = isSource ? MAX_SOURCES : MAX_TOPICS;
-        if (countTags(container) >= maxItems) {
-            showFieldError(container, `Maximum ${maxItems} ${isSource ? 'sources' : 'topics'} allowed`);
-            return false;
-        }
-        
-        // Check for duplicates
-        const existingTags = container.querySelectorAll('.tag');
-        for (const tag of existingTags) {
-            const existingValue = tag.textContent.trim().replace('×', '').trim();
-            if (existingValue.toLowerCase() === cleanValue.toLowerCase()) {
-                showFieldError(container, `This ${isSource ? 'source' : 'topic'} is already added`);
-                return false;
+
+            if (document.querySelectorAll('.tag[data-type="source"]').length >= MAX_SOURCES) {
+                showFieldError(sourcesContainer, `Maximum ${MAX_SOURCES} sources allowed`);
+                return;
+            }
+
+            value = cleanValue; // Use the cleaned domain value
+        } else if (type === 'topic') {
+            // Always respect the checkbox state
+            const checkbox = document.querySelector(`.topic-checkbox input[value="${value}"]`);
+            if (!checkbox || !checkbox.checked) {
+                return;
+            }
+
+            if (document.querySelectorAll('.tag[data-type="topic"]').length >= MAX_TOPICS) {
+                checkbox.checked = false;
+                return;
             }
         }
 
-        // If we get here, clear any existing errors
-        clearFieldError(container);
+        // Check for duplicates
+        const existingTags = document.querySelectorAll(`.tag[data-type="${type}"]`);
+        for (const tag of existingTags) {
+            if (tag.textContent.trim().replace('×', '').trim() === value) {
+                if (type === 'source') {
+                    showFieldError(sourcesContainer, 'This source is already added');
+                }
+                return;
+            }
+        }
+        
+        // Clear any existing errors for sources
+        if (type === 'source') {
+            clearFieldError(sourcesContainer);
+        }
         
         // Create and add the tag
-        const newTag = document.createElement('div');
-        newTag.className = 'tag';
-        newTag.setAttribute('role', 'listitem');
-        newTag.innerHTML = `
-            ${cleanValue}
-            <button class="remove-btn" aria-label="Remove ${cleanValue}" tabindex="0">×</button>
+        const tag = document.createElement('div');
+        tag.className = 'tag';
+        tag.setAttribute('data-type', type);
+        tag.setAttribute('data-value', value);
+        tag.innerHTML = `
+            <span>${value}</span>
+            <button class="remove-tag" aria-label="Remove ${type}">×</button>
         `;
         
         // Add remove functionality
-        const removeBtn = newTag.querySelector('.remove-btn');
-        removeBtn.addEventListener('click', function() {
-            this.parentElement.remove();
-            if (countTags(container) < maxItems) {
-                input.style.display = '';
-                clearFieldError(container);
+        const removeBtn = tag.querySelector('.remove-tag');
+        removeBtn.addEventListener('click', () => {
+            tag.remove();
+            if (type === 'topic') {
+                // Uncheck the corresponding checkbox
+                const checkbox = document.querySelector(`.topic-checkbox input[value="${value}"]`);
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+                // Update disabled state for all checkboxes
+                updateCheckboxStates();
             }
         });
         
-        container.insertBefore(newTag, input);
-        input.value = '';
+        const container = type === 'topic' ? topicsContainer : sourcesContainer;
+        container.appendChild(tag);
         
-        if (countTags(container) >= maxItems) {
-            input.style.display = 'none';
+        // Always update checkbox states after adding a topic tag
+        if (type === 'topic') {
+            updateCheckboxStates();
         }
-        
-        return true;
     }
 
     // Create an accessible live region for screen reader announcements
@@ -382,25 +399,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter' || e.key === ',') {
             e.preventDefault();
             const value = sourceInput.value.trim();
+            
             if (value) {
-                // Split by comma and process each source
-                const sources = value.split(',');
-                for (const source of sources) {
-                    const cleanSource = source.trim();
-                    if (cleanSource) {
-                        createTag(cleanSource, sourcesContainer, sourceInput, true);
-                    }
-                }
+                createTag(value, 'source');
                 sourceInput.value = '';
             }
         }
     });
 
-    // Handle topic selection
-    topicSelect.addEventListener('change', function() {
-        if (this.value) {
-            createTag(this.value, topicsContainer, topicSelect, false);
-            this.value = ''; // Reset the select
+    // Handle pasted content for sources
+    sourceInput.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const paste = (e.clipboardData || window.clipboardData).getData('text');
+        
+        if (paste) {
+            const sources = paste.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+            
+            if (sources.length) {
+                for (const source of sources) {
+                    const cleanSource = source.trim();
+                    if (cleanSource) {
+                        createTag(cleanSource, 'source');
+                    }
+                }
+                sourceInput.value = '';
+            }
         }
     });
 
@@ -418,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('keydown', (e) => {
             if (e.target.closest('.tag')) {
                 const tag = e.target.closest('.tag');
-                const removeBtn = tag.querySelector('.remove-btn');
+                const removeBtn = tag.querySelector('.remove-tag');
                 
                 if (e.key === 'Delete' || e.key === 'Backspace') {
                     e.preventDefault();
@@ -570,4 +593,69 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize keyboard navigation
     setupTagKeyboardNavigation();
+    
+    // Topic checkbox handlers
+    const topicCheckboxes = document.querySelectorAll('.topic-checkbox input[type="checkbox"]');
+    
+    // Add event listener at document level to catch clicks before they happen
+    document.addEventListener('click', function(event) {
+        // Only handle clicks on unchecked topic checkboxes
+        if (event.target.matches('.topic-checkbox input[type="checkbox"]:not(:checked)')) {
+            // If already at max topics, prevent checking and show message
+            const checkedCount = document.querySelectorAll('.topic-checkbox input[type="checkbox"]:checked').length;
+            if (checkedCount >= MAX_TOPICS) {
+                event.preventDefault();
+                event.stopPropagation();
+                showToast(`You can select maximum ${MAX_TOPICS} topics`, 'error');
+                return false;
+            }
+        }
+    }, true); // true = capture phase, runs before the default action
+    
+    // Handle changes in checkboxes
+    topicCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const value = this.value;
+            
+            if (this.checked) {
+                // Create tag for the selected topic
+                createTag(value, 'topic');
+            } else {
+                // Remove the corresponding tag
+                const tagToRemove = document.querySelector(`.tag[data-value="${value}"]`);
+                if (tagToRemove) {
+                    tagToRemove.remove();
+                }
+            }
+            
+            // Update disabled states after change
+            updateCheckboxStates();
+        });
+    });
+    
+    // Function to update checkbox states
+    function updateCheckboxStates() {
+        const checkedCount = document.querySelectorAll('.topic-checkbox input[type="checkbox"]:checked').length;
+        
+        // If we have the maximum number of topics selected, disable all unchecked boxes
+        topicCheckboxes.forEach(checkbox => {
+            if (!checkbox.checked) {
+                checkbox.disabled = checkedCount >= MAX_TOPICS;
+            }
+        });
+    }
+    
+    // Initialize checkbox states on page load
+    function initializeCheckboxes() {
+        // Check for pre-checked boxes and create tags
+        document.querySelectorAll('.topic-checkbox input[type="checkbox"]:checked').forEach(checkbox => {
+            createTag(checkbox.value, 'topic');
+        });
+        
+        // Set initial disabled states
+        updateCheckboxStates();
+    }
+    
+    // Run initialization
+    initializeCheckboxes();
 }); 
