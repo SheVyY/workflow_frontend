@@ -56,132 +56,132 @@ export async function fetchSampleNewsData() {
  * @returns {Promise<Array>} - Array of feed objects with different categories
  */
 export async function fetchMultipleCategories() {
-  // Create sample data with multiple categories
+  // Create sample data with multiple categories that match the checkbox options exactly
   const categories = [
     {
       id: 'sample-1',
-      category: 'Technology News',
+      category: 'Technology',
       news_items: [
         {
           id: 'item-1',
           title: 'AI Revolution Continues',
           content: 'Latest AI models demonstrate unprecedented capabilities in reasoning and code generation.',
-          source: 'TechDaily',
+          source: 'techdaily.com',
           source_url: '#'
         },
         {
           id: 'item-2',
           title: 'New Chip Architecture',
           content: 'Semiconductor companies unveil next-gen chip designs with 30% better energy efficiency.',
-          source: 'ChipWeekly',
+          source: 'chipweekly.com',
           source_url: '#'
         }
       ]
     },
     {
       id: 'sample-2',
-      category: 'Financial Markets',
+      category: 'Finance',
       news_items: [
         {
           id: 'item-3',
           title: 'Fed Signals Rate Changes',
           content: 'Federal Reserve hints at potential rate adjustments in response to cooling inflation data.',
-          source: 'MarketWatch',
+          source: 'marketwatch.com',
           source_url: '#'
         },
         {
           id: 'item-4',
           title: 'Tech Stock Rebound',
           content: 'Technology sector shows signs of recovery after months of volatility.',
-          source: 'Investors Today',
+          source: 'investors.com',
           source_url: '#'
         }
       ]
     },
     {
       id: 'sample-3',
-      category: 'Global Industry Insights', 
+      category: 'Business', 
       news_items: [
         {
           id: 'item-5',
           title: 'Renewable Energy Expansion',
           content: 'Global investment in renewable energy reached record levels last quarter, with solar leading growth.',
-          source: 'Energy Monitor',
+          source: 'energymonitor.com',
           source_url: '#'
         },
         {
           id: 'item-6',
           title: 'Supply Chain Resilience',
           content: 'New logistics technologies help businesses overcome persistent supply chain challenges.',
-          source: 'Supply Chain Review',
+          source: 'supplychainreview.com',
           source_url: '#'
         },
         {
           id: 'item-7',
           title: 'Manufacturing Automation Trends',
           content: 'Factory automation adoption accelerates as labor markets remain tight across developed economies.',
-          source: 'Manufacturing Weekly',
+          source: 'manufacturing.com',
           source_url: '#'
         },
         {
           id: 'item-8',
           title: 'Electric Vehicle Market Shifts',
           content: 'Price competition intensifies in EV market as new entrants challenge established manufacturers.',
-          source: 'Auto Intelligence',
+          source: 'autointelligence.com',
           source_url: '#'
         },
         {
           id: 'item-9',
           title: 'Global Trade Agreement Impact',
           content: 'Recent trade agreements between APAC nations expected to boost regional commerce by 15%.',
-          source: 'Trade Monitor',
+          source: 'trademonitor.org',
           source_url: '#'
         },
         {
           id: 'item-10',
           title: 'Pharmaceutical Innovation Pipeline',
           content: 'Major pharma companies report promising results in late-stage clinical trials for breakthrough treatments.',
-          source: 'Health Industries',
+          source: 'healthindustries.com',
           source_url: '#'
         }
       ]
     },
     {
       id: 'sample-4',
-      category: 'Market Analysis',
+      category: 'World News',
       news_items: [
         {
           id: 'item-11',
-          title: 'Commodity Price Forecast',
-          content: 'Analysts predict stabilization in commodity markets following months of heightened volatility.',
-          source: 'Commodity Insight',
+          title: 'Diplomatic Relations Improve',
+          content: 'Key nations announce new diplomatic framework to address regional security concerns.',
+          source: 'globaltimes.com',
           source_url: '#'
         },
         {
           id: 'item-12',
-          title: 'Emerging Market Opportunities',
-          content: 'Institutional investors increasing allocations to select emerging markets despite global uncertainties.',
-          source: 'Global Markets',
+          title: 'Climate Agreement Progress',
+          content: 'International climate accord gains momentum as additional countries pledge support.',
+          source: 'worldnews.com',
           source_url: '#'
         }
       ]
     },
     {
       id: 'sample-5',
-      category: 'Startup Ecosystem',
+      category: 'Environment',
       news_items: [
         {
           id: 'item-13',
-          title: 'Venture Funding Trends',
-          content: 'Early-stage funding shows signs of recovery with focus on AI, climate tech, and healthcare startups.',
-          source: 'Venture Beat',
+          title: 'Ocean Conservation Breakthrough',
+          content: 'New marine protection areas established across critical habitats in the Pacific.',
+          source: 'ecowatch.org',
           source_url: '#'
         },
         {
           id: 'item-14',
-          title: 'Unicorn Valuations Adjust',
-          content: 'Later-stage startups adapt to new market realities with focus on profitability over growth.',
-          source: 'Startup Insider',
+          title: 'Sustainable Energy Milestone',
+          content: 'Renewable energy sources account for over 40% of electricity generation in key markets.',
+          source: 'greenmonitor.com',
           source_url: '#'
         }
       ]
