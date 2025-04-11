@@ -473,8 +473,10 @@ document.addEventListener('DOMContentLoaded', () => {
         emptyPreviewButton.textContent = 'Loading...';
         
         try {
+            console.log('Fetching sample categories for preview...');
             // Fetch multiple categories of sample data
             const categoryFeeds = await fetchMultipleCategories();
+            console.log('Preview data fetched:', categoryFeeds?.length || 0, 'categories');
             
             // Clear any existing content
             newsContainer.innerHTML = '';
@@ -485,6 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Display each category feed
                 categoryFeeds.forEach(feed => {
+                    console.log(`Processing ${feed.category} feed with ${feed.news_items?.length || 0} items`);
                     const newsItems = formatNewsData(feed);
                     if (newsItems.length > 0) {
                         // Make sure we mark these as sample data for proper handling
@@ -520,8 +523,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Showing sample news feeds. Scroll to see all feeds.', 'success');
             } else {
                 // No sample data available
-                showToast('No sample data available. Please try again later.', 'error');
-                toggleEmptyState(emptyState, newsContainer, true);
+                console.warn('No sample data available for preview');
+                showToast('No sample data available. Using fallback preview data.', 'warning');
+                
+                // Create a single fallback feed if we have no data
+                const fallbackFeed = {
+                    id: 'fallback-1',
+                    category: 'Preview',
+                    news_items: [
+                        {
+                            id: 'fallback-item-1',
+                            title: 'Sample News Item',
+                            content: 'This is a fallback sample news item. Your actual news will look better than this.',
+                            source: 'example.com',
+                            source_url: '#'
+                        }
+                    ]
+                };
+                
+                const newsItems = formatNewsData(fallbackFeed);
+                const newsItem = generateNewsItem(newsItems, true, fallbackFeed.id, fallbackFeed.category);
+                
+                // Clear any existing content
+                newsContainer.innerHTML = '';
+                newsContainer.appendChild(newsItem);
+                
+                // Hide empty state and show news container
+                if (emptyState) {
+                    emptyState.style.display = 'none';
+                }
+                newsContainer.style.display = 'flex';
             }
         } catch (error) {
             console.error('Error loading preview:', error);

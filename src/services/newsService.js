@@ -163,4 +163,61 @@ export async function fetchSampleNewsData() {
     console.error('Error fetching sample news data:', error);
     return [];
   }
+}
+
+/**
+ * Fetch sample category data for preview from Supabase
+ * @returns {Promise<Array>} - Array of categories with news items for preview
+ */
+export async function fetchSampleCategories() {
+  try {
+    // Check if we have a sample_categories table in Supabase
+    const { data, error } = await supabase
+      .from('sample_categories')
+      .select(`
+        id,
+        category,
+        news_items (
+          id,
+          title,
+          content,
+          source,
+          source_url,
+          category
+        )
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.warn('Could not fetch sample categories from Supabase:', error);
+      // Try the sample_news_feeds table as an alternative
+      const { data: feedsData, error: feedsError } = await supabase
+        .from('sample_news_feeds')
+        .select(`
+          id,
+          category,
+          news_items (
+            id,
+            title,
+            content,
+            source,
+            source_url,
+            category
+          )
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (feedsError) {
+        console.warn('Could not fetch sample_news_feeds either:', feedsError);
+        return [];
+      }
+      
+      return feedsData || [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching sample categories:', error);
+    return [];
+  }
 } 
