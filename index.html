@@ -12,107 +12,192 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <div class="logo-container">
-                <img src="doflo_logo.png" alt="Doflo Logo" class="logo" width="132" height="44">
-            </div>
-            <h1>News Summary</h1>
-        </header>
-        
-        <p class="description">
-            Get daily summaries of top articles on your chosen topics—key
-            insights, source links, no manual research needed. Enter website
-            URLs and specify your topics of interest to get a daily summary of
-            relevant articles.
-        </p>
-        
-        <div class="info-banner" role="alert">
-            Daily updates will be sent at 8:00 AM UTC to your email.
-        </div>
-
-        <div class="section">
-            <h2>Media sources (EN) <span class="limit-text">max 3</span></h2>
-            <div class="tags" id="sources-container" aria-label="Media sources container">
-                <input type="text" id="source-input" placeholder="e.g. times.com, reuters.com" class="tag-input" aria-label="Add a media source">
-            </div>
-            <div class="error-message" aria-live="polite"></div>
-        </div>
-
-        <div class="section">
-            <h2>Topics and preferences <span class="limit-text">max 3</span></h2>
-            <div class="form-group">
-                <div class="topics-grid">
-                    <label class="topic-checkbox">
-                        <input type="checkbox" value="technology">
-                        <span>Technology</span>
-                    </label>
-                    <label class="topic-checkbox">
-                        <input type="checkbox" value="business">
-                        <span>Business</span>
-                    </label>
-                    <label class="topic-checkbox">
-                        <input type="checkbox" value="finance">
-                        <span>Finance</span>
-                    </label>
-                    <label class="topic-checkbox">
-                        <input type="checkbox" value="politics">
-                        <span>Politics</span>
-                    </label>
-                    <label class="topic-checkbox">
-                        <input type="checkbox" value="science">
-                        <span>Science</span>
-                    </label>
-                    <label class="topic-checkbox">
-                        <input type="checkbox" value="health">
-                        <span>Health</span>
-                    </label>
-                    <label class="topic-checkbox">
-                        <input type="checkbox" value="environment">
-                        <span>Environment</span>
-                    </label>
-                    <label class="topic-checkbox">
-                        <input type="checkbox" value="education">
-                        <span>Education</span>
-                    </label>
-                    <label class="topic-checkbox">
-                        <input type="checkbox" value="sports">
-                        <span>Sports</span>
-                    </label>
-                    <label class="topic-checkbox">
-                        <input type="checkbox" value="entertainment">
-                        <span>Entertainment</span>
-                    </label>
-                    <label class="topic-checkbox">
-                        <input type="checkbox" value="culture">
-                        <span>Culture</span>
-                    </label>
-                    <label class="topic-checkbox">
-                        <input type="checkbox" value="world-news">
-                        <span>World News</span>
-                    </label>
+    <div class="main-container">
+        <!-- Form Section (Left) -->
+        <div class="container form-container" id="form-section">
+            <header class="header">
+                <div class="logo-container">
+                    <img src="doflo_logo.png" alt="Doflo Logo" class="logo" width="132" height="44">
                 </div>
-                <div class="tags" id="topics-container"></div>
+                <h1>News Summary</h1>
+            </header>
+            
+            <p class="description">
+                Get daily summaries of top articles on your chosen topics—key
+                insights, source links, no manual research needed. Enter website
+                URLs and specify your topics of interest to get a daily summary of
+                relevant articles.
+            </p>
+            
+            <div class="info-banner" role="alert">
+                Daily updates will be sent at 8:00 AM UTC to your email.
+            </div>
+
+            <div class="section">
+                <h2>Media sources (EN) <span class="limit-text">max 3</span></h2>
+                <div class="tags" id="sources-container" aria-label="Media sources container">
+                    <input type="text" id="source-input" placeholder="e.g. times.com, reuters.com" class="tag-input" aria-label="Add a media source">
+                </div>
+                <div class="error-message" aria-live="polite"></div>
+            </div>
+
+            <div class="section">
+                <h2>Topics and preferences <span class="limit-text">max 3</span></h2>
+                <div class="form-group">
+                    <div class="topics-grid">
+                        <label class="topic-checkbox">
+                            <input type="checkbox" value="technology">
+                            <span>Technology</span>
+                        </label>
+                        <label class="topic-checkbox">
+                            <input type="checkbox" value="business">
+                            <span>Business</span>
+                        </label>
+                        <label class="topic-checkbox">
+                            <input type="checkbox" value="finance">
+                            <span>Finance</span>
+                        </label>
+                        <label class="topic-checkbox">
+                            <input type="checkbox" value="politics">
+                            <span>Politics</span>
+                        </label>
+                        <label class="topic-checkbox">
+                            <input type="checkbox" value="science">
+                            <span>Science</span>
+                        </label>
+                        <label class="topic-checkbox">
+                            <input type="checkbox" value="health">
+                            <span>Health</span>
+                        </label>
+                        <label class="topic-checkbox">
+                            <input type="checkbox" value="environment">
+                            <span>Environment</span>
+                        </label>
+                        <label class="topic-checkbox">
+                            <input type="checkbox" value="education">
+                            <span>Education</span>
+                        </label>
+                        <label class="topic-checkbox">
+                            <input type="checkbox" value="sports">
+                            <span>Sports</span>
+                        </label>
+                        <label class="topic-checkbox">
+                            <input type="checkbox" value="entertainment">
+                            <span>Entertainment</span>
+                        </label>
+                        <label class="topic-checkbox">
+                            <input type="checkbox" value="culture">
+                            <span>Culture</span>
+                        </label>
+                        <label class="topic-checkbox">
+                            <input type="checkbox" value="world-news">
+                            <span>World News</span>
+                        </label>
+                    </div>
+                    <div class="tags" id="topics-container"></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Language</h2>
+                <div class="select-wrapper">
+                    <select id="language-select" aria-label="Select language">
+                        <option value="" disabled selected>Select language</option>
+                        <option value="english">English</option>
+                        <option value="czech">Czech</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Email address</h2>
+                <input type="email" id="email-input" placeholder="e.g. john@example.com" class="full-input" aria-label="Enter your email address" inputmode="email" autocomplete="email">
+            </div>
+
+            <div class="button-container">
+                <button id="start-btn" class="start-btn" aria-label="Create subscription">Start</button>
+                <button id="preview-btn" class="preview-btn" aria-label="Show preview">Show Preview</button>
             </div>
         </div>
 
-        <div class="section">
-            <h2>Language</h2>
-            <div class="select-wrapper">
-                <select id="language-select" aria-label="Select language">
-                    <option value="" disabled selected>Select language</option>
-                    <option value="english">English</option>
-                    <option value="czech">Czech</option>
-                </select>
+        <!-- Output Section (Right) -->
+        <div class="container output-container" id="output-section">
+            <header class="header">
+                <h1>Output</h1>
+                <p class="update-info">Displayed in your feed <span class="highlight">Every day at 8AM</span>.</p>
+            </header>
+            
+            <div class="news-container" id="news-container">
+                <!-- News items will be dynamically inserted here -->
+                <div class="news-item">
+                    <div class="news-header">
+                        <div class="news-icon">
+                            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="40" height="40" rx="10" fill="url(#paint0_linear)" />
+                                <path d="M14 15h12v1.5H14z" fill="#fff" />
+                                <path d="M14 19h12v1.5H14z" fill="#fff" />
+                                <path d="M14 23h12v1.5H14z" fill="#fff" />
+                                <path d="M14 27h8v1.5H14z" fill="#fff" />
+                                <defs>
+                                    <linearGradient id="paint0_linear" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                                        <stop stop-color="#4ee1a0" />
+                                        <stop offset="1" stop-color="#00ffbb" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                        </div>
+                        <div class="news-title">
+                            <h2>News Summary</h2>
+                            <span class="news-date">April 11, 8AM</span>
+                        </div>
+                        <button class="news-menu-btn" aria-label="More options">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="6" r="2" fill="#333" />
+                                <circle cx="12" cy="12" r="2" fill="#333" />
+                                <circle cx="12" cy="18" r="2" fill="#333" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="news-content">
+                        <!-- Sample news stories based on the image -->
+                        <div class="news-story">
+                            <span class="news-diamond">◆</span>
+                            <h3>Honor's $10B AI Investment</h3>
+                            <p>Chinese smartphone maker Honor will invest $10B over 5 years to expand AI in its devices.</p>
+                            <a href="#" class="read-more">Read more</a>
+                        </div>
+                        
+                        <div class="news-story">
+                            <span class="news-diamond">◆</span>
+                            <h3>Nvidia's AI Growth & Stock Dip</h3>
+                            <p>AI chip sales drove a 78% revenue increase, but stock fell 8.5%. New Blackwell Ultra chip expected soon.</p>
+                            <a href="#" class="read-more">Read more</a>
+                        </div>
+                        
+                        <div class="news-story">
+                            <span class="news-diamond">◆</span>
+                            <h3>U.S. Considers AI Chip Export Ban</h3>
+                            <p>Possible trade restrictions on AI chip sales to China could impact Nvidia's H20 & B20 processors.</p>
+                            <a href="#" class="read-more">Read more</a>
+                        </div>
+                        
+                        <div class="news-story">
+                            <span class="news-diamond">◆</span>
+                            <h3>SoftBank's $16B AI Investment</h3>
+                            <p>The firm plans to borrow $16B to expand AI initiatives, with another $8B loan possible in 2026.</p>
+                            <a href="#" class="read-more">Read more</a>
+                        </div>
+                        
+                        <div class="news-story">
+                            <span class="news-diamond">◆</span>
+                            <h3>Nvidia's AI Dominance</h3>
+                            <p>Nvidia's H100 chip fueled its $3.45T valuation, solidifying its lead in AI, gaming, and robotics.</p>
+                            <a href="#" class="read-more">Read more</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <div class="section">
-            <h2>Email address</h2>
-            <input type="email" id="email-input" placeholder="e.g. john@example.com" class="full-input" aria-label="Enter your email address" inputmode="email" autocomplete="email">
-        </div>
-
-        <button id="start-btn" class="start-btn" aria-label="Create subscription">Start</button>
     </div>
 
     <script src="script.js"></script>

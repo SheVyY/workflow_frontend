@@ -6,6 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const startButton = document.getElementById('start-btn');
     const languageSelect = document.getElementById('language-select');
     
+    // New elements for output section
+    const previewButton = document.getElementById('preview-btn');
+    const outputSection = document.getElementById('output-section');
+    const newsContainer = document.getElementById('news-container');
+    
     // Webhook URL
     const webhookUrl = 'https://eoj7hczhcudxukm.m.pipedream.net';
     
@@ -25,6 +30,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const day = String(yesterday.getUTCDate()).padStart(2, '0');
         
         return `${year}-${month}-${day}`;
+    }
+
+    // Function to get formatted date for display (e.g., "April 11, 8AM")
+    function getFormattedDate() {
+        const now = new Date();
+        const options = { month: 'long', day: 'numeric' };
+        const dateString = now.toLocaleDateString('en-US', options);
+        return `${dateString}, 8AM`;
     }
 
     // Detect if device is mobile
@@ -681,6 +694,178 @@ document.addEventListener('DOMContentLoaded', () => {
         updateCheckboxStates();
     }
     
-    // Run initialization
-    initializeCheckboxes();
+    // Function to update the output view with news content
+    function updateOutputView() {
+        // Update the date display
+        const newsDate = document.querySelector('.news-date');
+        if (newsDate) {
+            newsDate.textContent = getFormattedDate();
+        }
+        
+        // For mobile view, scroll to the output section
+        if (window.innerWidth <= 768) {
+            outputSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+    
+    // Sample news data for testing
+    const sampleNewsData = [
+        {
+            title: "Honor's $10B AI Investment",
+            content: "Chinese smartphone maker Honor will invest $10B over 5 years to expand AI in its devices.",
+            url: "#"
+        },
+        {
+            title: "Nvidia's AI Growth & Stock Dip",
+            content: "AI chip sales drove a 78% revenue increase, but stock fell 8.5%. New Blackwell Ultra chip expected soon.",
+            url: "#"
+        },
+        {
+            title: "U.S. Considers AI Chip Export Ban",
+            content: "Possible trade restrictions on AI chip sales to China could impact Nvidia's H20 & B20 processors.",
+            url: "#"
+        },
+        {
+            title: "SoftBank's $16B AI Investment",
+            content: "The firm plans to borrow $16B to expand AI initiatives, with another $8B loan possible in 2026.",
+            url: "#"
+        },
+        {
+            title: "Nvidia's AI Dominance",
+            content: "Nvidia's H100 chip fueled its $3.45T valuation, solidifying its lead in AI, gaming, and robotics.",
+            url: "#"
+        }
+    ];
+    
+    // Function to generate news item with dynamic data
+    function generateNewsItem(newsData) {
+        // Create news item container
+        const newsItem = document.createElement('div');
+        newsItem.className = 'news-item';
+        
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'news-header';
+        
+        // Create icon
+        const icon = document.createElement('div');
+        icon.className = 'news-icon';
+        icon.innerHTML = `
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" rx="10" fill="url(#paint0_linear)" />
+                <path d="M14 15h12v1.5H14z" fill="#fff" />
+                <path d="M14 19h12v1.5H14z" fill="#fff" />
+                <path d="M14 23h12v1.5H14z" fill="#fff" />
+                <path d="M14 27h8v1.5H14z" fill="#fff" />
+                <defs>
+                    <linearGradient id="paint0_linear" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#4ee1a0" />
+                        <stop offset="1" stop-color="#00ffbb" />
+                    </linearGradient>
+                </defs>
+            </svg>
+        `;
+        
+        // Create title
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'news-title';
+        
+        const title = document.createElement('h2');
+        title.textContent = 'News Summary';
+        
+        const date = document.createElement('span');
+        date.className = 'news-date';
+        date.textContent = getFormattedDate();
+        
+        titleDiv.appendChild(title);
+        titleDiv.appendChild(date);
+        
+        // Create menu button
+        const menuBtn = document.createElement('button');
+        menuBtn.className = 'news-menu-btn';
+        menuBtn.setAttribute('aria-label', 'More options');
+        menuBtn.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="6" r="2" fill="#333" />
+                <circle cx="12" cy="12" r="2" fill="#333" />
+                <circle cx="12" cy="18" r="2" fill="#333" />
+            </svg>
+        `;
+        
+        // Assemble header
+        header.appendChild(icon);
+        header.appendChild(titleDiv);
+        header.appendChild(menuBtn);
+        
+        // Create content
+        const content = document.createElement('div');
+        content.className = 'news-content';
+        
+        // Add news stories
+        newsData.forEach(item => {
+            const story = document.createElement('div');
+            story.className = 'news-story';
+            
+            const diamond = document.createElement('span');
+            diamond.className = 'news-diamond';
+            diamond.textContent = '◆';
+            
+            const storyTitle = document.createElement('h3');
+            storyTitle.textContent = item.title;
+            
+            const storyContent = document.createElement('p');
+            storyContent.textContent = item.content;
+            
+            const readMore = document.createElement('a');
+            readMore.href = item.url;
+            readMore.className = 'read-more';
+            readMore.textContent = 'Read more';
+            
+            story.appendChild(diamond);
+            story.appendChild(storyTitle);
+            story.appendChild(storyContent);
+            story.appendChild(readMore);
+            
+            content.appendChild(story);
+        });
+        
+        // Assemble news item
+        newsItem.appendChild(header);
+        newsItem.appendChild(content);
+        
+        return newsItem;
+    }
+    
+    // Function to update news container with data
+    function updateNewsContainer(newsData) {
+        // Clear existing content
+        newsContainer.innerHTML = '';
+        
+        // Add news item
+        const newsItem = generateNewsItem(newsData);
+        newsContainer.appendChild(newsItem);
+        
+        // Update the output view
+        updateOutputView();
+    }
+
+    // Event listeners for UI navigation
+    previewButton.addEventListener('click', () => {
+        updateNewsContainer(sampleNewsData);
+    });
+
+    // Initialize
+    function init() {
+        setupAccessibilityAnnouncements();
+        setupTagKeyboardNavigation();
+        initializeCheckboxes();
+        
+        // Initialize preview button for testing
+        previewButton.disabled = false;
+        
+        // Initial output display with sample data
+        updateNewsContainer(sampleNewsData);
+    }
+    
+    init();
 }); 
