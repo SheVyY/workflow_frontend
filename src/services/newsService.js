@@ -1,4 +1,4 @@
-import supabase from './supabase';
+import supabase from './supabase.js';
 
 /**
  * News Feed Service
@@ -6,11 +6,10 @@ import supabase from './supabase';
  */
 
 /**
- * Fetch all news feeds for a specific user
- * @param {string} userId - The user's ID
+ * Fetch all news feeds
  * @returns {Promise<Array>} - Array of news feeds
  */
-export async function fetchNewsFeeds(userId) {
+export async function fetchNewsFeeds() {
   try {
     const { data, error } = await supabase
       .from('news_feeds')
@@ -27,7 +26,6 @@ export async function fetchNewsFeeds(userId) {
           category
         )
       `)
-      .eq('user_id', userId)
       .order('date', { ascending: false });
     
     if (error) throw error;
@@ -69,24 +67,19 @@ export async function deleteNewsFeed(feedId) {
 }
 
 /**
- * Subscribe to real-time changes for a user's news feeds
- * @param {string} userId - The user's ID
+ * Subscribe to real-time changes for news feeds
  * @param {Function} onInsert - Callback when a new feed is inserted
  * @param {Function} onDelete - Callback when a feed is deleted
  * @returns {Object} - Subscription object with unsubscribe method
  */
-export function subscribeToNewsFeeds(userId, onInsert, onDelete) {
+export function subscribeToNewsFeeds(onInsert, onDelete) {
   const subscription = supabase
     .channel('public:news_feeds')
     .on('INSERT', payload => {
-      if (payload.new.user_id === userId) {
-        onInsert(payload.new);
-      }
+      onInsert(payload.new);
     })
     .on('DELETE', payload => {
-      if (payload.old.user_id === userId) {
-        onDelete(payload.old);
-      }
+      onDelete(payload.old);
     })
     .subscribe();
   
@@ -94,11 +87,10 @@ export function subscribeToNewsFeeds(userId, onInsert, onDelete) {
 }
 
 /**
- * Get the latest news feed for a user
- * @param {string} userId - The user's ID
+ * Get the latest news feed
  * @returns {Promise<Object|null>} - The latest news feed or null
  */
-export async function getLatestNewsFeed(userId) {
+export async function getLatestNewsFeed() {
   try {
     const { data, error } = await supabase
       .from('news_feeds')
@@ -115,7 +107,6 @@ export async function getLatestNewsFeed(userId) {
           category
         )
       `)
-      .eq('user_id', userId)
       .order('date', { ascending: false })
       .limit(1)
       .single();
@@ -126,5 +117,50 @@ export async function getLatestNewsFeed(userId) {
   } catch (error) {
     console.error('Error fetching latest news feed:', error);
     return null;
+  }
+}
+
+/**
+ * Fetch sample news data for preview
+ * @returns {Promise<Array>} - Array of formatted news items
+ */
+export async function fetchSampleNewsData() {
+  try {
+    // Try to get the sample news feed from Supabase (using a known test submission ID)
+    const { data, error } = await supabase
+      .from('news_feeds')
+      .select(`
+        id,
+        news_items (
+          id,
+          title,
+          content,
+          source,
+          source_url
+        )
+      `)
+      .eq('submission_id', 'test-submission-1')
+      .limit(1)
+      .single();
+    
+    if (error) {
+      console.warn('Could not fetch sample data from Supabase:', error);
+      return [];
+    }
+    
+    // Format the data for display
+    if (data && data.news_items && data.news_items.length > 0) {
+      return data.news_items.map(item => ({
+        title: item.title,
+        content: item.content,
+        url: item.source_url || '#',
+        source: item.source
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching sample news data:', error);
+    return [];
   }
 } 

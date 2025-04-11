@@ -1,5 +1,6 @@
 // Import the news service functions
 import { fetchNewsFeeds, deleteNewsFeed, subscribeToNewsFeeds, getLatestNewsFeed } from './newsService.js';
+import { generateSubmissionId, saveFormSubmission, getFeedsBySubmissionId } from './formService.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const sourceInput = document.getElementById('source-input');
@@ -21,12 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Limits
     const MAX_SOURCES = 3;
     const MAX_TOPICS = 3;
-
-    // Current user ID (in a real app, this would come from auth)
-    const currentUserId = 'user-123'; // Placeholder - replace with actual user ID from authentication
     
     // Track active subscriptions
     let activeSubscription = null;
+    
+    // Track current submission ID
+    let currentSubmissionId = localStorage.getItem('submissionId') || null;
 
     // Sample news data for testing/preview
     const sampleNewsData = [
@@ -535,231 +536,147 @@ document.addEventListener('DOMContentLoaded', () => {
         element.classList.remove('loading');
     }
 
-    // Form submission handler
-    startButton.addEventListener('click', async (e) => {
-        e.preventDefault();
-        console.log('Form submission started');
-
-        // Prevent multiple submissions
-        if (isSubmitting) {
-            console.log('Already submitting, preventing duplicate submission');
-            return;
-        }
-
-        // Get form values
-        const sources = Array.from(sourcesContainer.querySelectorAll('.tag')).map(tag => 
-            tag.querySelector('span').textContent.trim()
-        );
-        console.log('Sources:', sources);
-
-        const topics = Array.from(document.querySelectorAll('.topic-checkbox input:checked')).map(checkbox => 
-            checkbox.value
-        );
-        console.log('Topics:', topics);
-
+    // Function to collect form data
+    function collectFormData() {
+        // Get sources from tags
+        const sources = Array.from(sourcesContainer.querySelectorAll('.tag'))
+            .map(tag => tag.querySelector('span').textContent.trim());
+        
+        // Get topics from tags
+        const topics = Array.from(topicsContainer.querySelectorAll('.tag'))
+            .map(tag => tag.querySelector('span').textContent.trim());
+        
+        // Get language
         const language = languageSelect.value;
-        console.log('Language:', language);
-
+        
+        // Get email
         const email = emailInput.value.trim();
-        console.log('Email:', email);
-
-        let isValid = true;
-
-        // Clear all existing errors first
-        document.querySelectorAll('.error-message').forEach(el => el.remove());
-        document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
-
-        // Validate each field
-        if (sources.length === 0) {
-            isValid = false;
-            showFieldError(sourcesContainer, 'Please add at least one media source');
+        
+        return {
+            sources,
+            topics,
+            language,
+            email
+        };
+    }
+    
+    // Function to validate form data
+    function validateFormData(formData) {
+        const errors = [];
+        
+        if (formData.sources.length === 0) {
+            errors.push('Please add at least one news source');
         }
-
-        if (topics.length === 0) {
-            isValid = false;
-            showFieldError(topicsContainer, 'Please add at least one topic');
+        
+        if (formData.topics.length === 0) {
+            errors.push('Please select at least one topic');
         }
-
-        if (!language) {
-            isValid = false;
-            showFieldError(languageSelect, 'Please select a language');
+        
+        if (!formData.language) {
+            errors.push('Please select a language');
         }
-
-        if (!email) {
-            isValid = false;
-            showFieldError(emailInput, 'Please enter your email address');
-        } else if (!isValidEmail(email)) {
-            isValid = false;
-            showFieldError(emailInput, 'Please enter a valid email address');
+        
+        if (!formData.email) {
+            errors.push('Please enter your email address');
+        } else if (!isValidEmail(formData.email)) {
+            errors.push('Please enter a valid email address');
         }
-
-        if (!isValid) {
-            console.log('Form validation failed');
+        
+        return errors;
+    }
+    
+    // Function to process form submission
+    async function processFormSubmission() {
+        // Collect form data
+        const formData = collectFormData();
+        
+        // Validate form data
+        const errors = validateFormData(formData);
+        
+        if (errors.length > 0) {
+            // Show errors
+            errors.forEach(error => {
+                showToast(error, 'error');
+            });
             return;
         }
-
-        console.log('Form validation passed, preparing to submit');
-
-        // Set submitting state
-        isSubmitting = true;
-
-        // Show loading states
-        startButton.disabled = true;
-        startButton.textContent = 'Setting up...';
-        showLoadingState(sourcesContainer);
-        showLoadingState(topicsContainer);
-        showLoadingState(emailInput);
-
+        
+        // Show loading state
+        showLoadingState(startButton);
+        
         try {
-            console.log('Sending request to webhook:', webhookUrl);
-            const requestBody = {
-                sources: sources.map(source => ({
-                    url: source.startsWith('http') ? source : `https://${source}`,
-                    method: "GET"
-                })),
-                topics,
-                language,
-                email,
-                date: getYesterdayUTC()
-            };
-            console.log('Request body:', requestBody);
-
-            const response = await fetch(webhookUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody)
-            });
-
-            console.log('Response status:', response.status);
-            const responseData = await response.text();
-            console.log('Response data:', responseData);
-
-            if (response.ok) {
-                console.log('Submission successful');
-                showToast('Your news summary has been set up successfully!', 'success');
-                // Reset form
-                sourcesContainer.querySelectorAll('.tag').forEach(tag => tag.remove());
-                topicsContainer.querySelectorAll('.tag').forEach(tag => tag.remove());
-                languageSelect.value = '';
-                emailInput.value = '';
+            // Generate a new submission ID
+            const submissionId = generateSubmissionId();
+            
+            // Save current submission ID to localStorage
+            localStorage.setItem('submissionId', submissionId);
+            currentSubmissionId = submissionId;
+            
+            // Save form submission to Supabase
+            const submission = await saveFormSubmission(formData, submissionId);
+            
+            if (submission) {
+                // Success - show confirmation
+                showToast('Your subscription has been created! Check your email for updates.', 'success');
                 
-                // Disable the start button permanently after successful submission
-                startButton.disabled = true;
-                startButton.textContent = 'Submitted';
-                startButton.classList.add('submitted');
+                // Scroll to output section and show empty state with explanation
+                toggleEmptyState();
+                outputSection.scrollIntoView({ behavior: 'smooth' });
             } else {
-                throw new Error(`Failed to set up news summary: ${response.status} ${responseData}`);
+                showToast('There was an error creating your subscription. Please try again.', 'error');
             }
         } catch (error) {
-            console.error('Submission error:', error);
-            showToast('Something went wrong. Please try again.', 'error');
-            // Reset submitting state on error so user can try again
-            isSubmitting = false;
-            startButton.disabled = false;
-            startButton.textContent = 'Start';
+            console.error('Error processing form submission:', error);
+            showToast('There was an error creating your subscription. Please try again.', 'error');
         } finally {
-            // Hide loading states
-            hideLoadingState(sourcesContainer);
-            hideLoadingState(topicsContainer);
-            hideLoadingState(emailInput);
-            console.log('Form submission completed');
+            // Hide loading state
+            hideLoadingState(startButton);
         }
-    });
-
-    // Initialize keyboard navigation
-    setupTagKeyboardNavigation();
+    }
     
-    // Topic checkbox handlers
-    const topicCheckboxes = document.querySelectorAll('.topic-checkbox input[type="checkbox"]');
-    
-    // Add event listener at document level to catch clicks before they happen
-    document.addEventListener('click', function(event) {
-        // Only handle clicks on unchecked topic checkboxes
-        if (event.target.matches('.topic-checkbox input[type="checkbox"]:not(:checked)')) {
-            // If already at max topics, prevent checking and show message
-            const checkedCount = document.querySelectorAll('.topic-checkbox input[type="checkbox"]:checked').length;
-            if (checkedCount >= MAX_TOPICS) {
-                event.preventDefault();
-                event.stopPropagation();
-                showToast(`You can select maximum ${MAX_TOPICS} topics`, 'error');
-                return false;
-            }
-        }
-    }, true); // true = capture phase, runs before the default action
-    
-    // Handle changes in checkboxes
-    topicCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const value = this.value;
+    // Function to load and display news feeds for the current submission
+    async function loadNewsFeeds() {
+        try {
+            // Show loading state
+            toggleEmptyState();
             
-            if (this.checked) {
-                // Create tag for the selected topic
-                createTag(value, 'topic');
-            } else {
-                // Remove the corresponding tag
-                const tagToRemove = document.querySelector(`.tag[data-value="${value}"]`);
-                if (tagToRemove) {
-                    tagToRemove.remove();
+            // If we have a submission ID, fetch feeds for it
+            if (currentSubmissionId) {
+                const feeds = await getFeedsBySubmissionId(currentSubmissionId);
+                
+                if (feeds && feeds.length > 0) {
+                    // Clear the container first
+                    newsContainer.innerHTML = '';
+                    
+                    // Display each feed
+                    feeds.forEach(feed => {
+                        const newsItems = formatNewsData(feed);
+                        if (newsItems.length > 0) {
+                            // Pass the feed ID to the generate function
+                            const newsItem = generateNewsItem(newsItems, false, feed.id);
+                            newsContainer.appendChild(newsItem);
+                        }
+                    });
+                    
+                    // Update the UI
+                    updateOutputView();
+                } else {
+                    // No feeds found for this submission ID
+                    if (emptyState) {
+                        const message = document.querySelector('.empty-state-message');
+                        if (message) {
+                            message.textContent = 'Your news feed is being prepared. Check back soon for updates or click "Show Preview" to see an example.';
+                        }
+                    }
+                    toggleEmptyState();
                 }
+            } else {
+                // No submission ID, show empty state
+                toggleEmptyState();
             }
-            
-            // Update disabled states after change
-            updateCheckboxStates();
-        });
-    });
-    
-    // Function to update checkbox states
-    function updateCheckboxStates() {
-        const checkedCount = document.querySelectorAll('.topic-checkbox input[type="checkbox"]:checked').length;
-        
-        // If we have the maximum number of topics selected, disable all unchecked boxes
-        topicCheckboxes.forEach(checkbox => {
-            if (!checkbox.checked) {
-                checkbox.disabled = checkedCount >= MAX_TOPICS;
-            }
-        });
-    }
-    
-    // Initialize checkbox states on page load
-    function initializeCheckboxes() {
-        // Check for pre-checked boxes and create tags
-        document.querySelectorAll('.topic-checkbox input[type="checkbox"]:checked').forEach(checkbox => {
-            createTag(checkbox.value, 'topic');
-        });
-        
-        // Set initial disabled states
-        updateCheckboxStates();
-    }
-    
-    // Function to toggle empty state visibility based on news items
-    function toggleEmptyState() {
-        const hasNewsItems = newsContainer.children.length > 0;
-        
-        if (hasNewsItems) {
-            emptyState.style.display = 'none';
-            newsContainer.style.display = 'block';
-        } else {
-            emptyState.style.display = 'flex';
-            newsContainer.style.display = 'none';
-        }
-    }
-    
-    // Function to update the output view with news content
-    function updateOutputView() {
-        // Update the date display
-        const newsDate = document.querySelector('.news-date');
-        if (newsDate) {
-            newsDate.textContent = getFormattedDate();
-        }
-        
-        // Check if empty state should be shown
-        toggleEmptyState();
-        
-        // For mobile view, scroll to the output section
-        if (window.innerWidth <= 768) {
-            outputSection.scrollIntoView({ behavior: 'smooth' });
+        } catch (error) {
+            console.error('Error loading news feeds:', error);
+            toggleEmptyState();
         }
     }
     
@@ -776,108 +693,6 @@ document.addEventListener('DOMContentLoaded', () => {
             source: item.source
         }));
     }
-    
-    // Function to load and display user's news feeds
-    async function loadUserNewsFeeds() {
-        try {
-            // Show loading state
-            toggleEmptyState();
-            
-            // Get the latest news feed
-            const latestFeed = await getLatestNewsFeed(currentUserId);
-            
-            if (latestFeed) {
-                // Convert feed data to the format expected by our UI
-                const newsItems = formatNewsData(latestFeed);
-                
-                if (newsItems.length > 0) {
-                    // Display the news items (with isSampleData = false since this is real data)
-                    updateNewsContainer(newsItems, false);
-                    
-                    // Store the feed ID on the news container for deletion
-                    const newsItem = newsContainer.querySelector('.news-item');
-                    if (newsItem) {
-                        newsItem.dataset.feedId = latestFeed.id;
-                    }
-                } else {
-                    // No news items in the feed
-                    toggleEmptyState();
-                }
-            } else {
-                // No feeds found
-                toggleEmptyState();
-            }
-        } catch (error) {
-            console.error('Error loading news feeds:', error);
-            toggleEmptyState();
-        }
-    }
-    
-    // Function to handle deleting a news feed
-    async function handleDeleteFeed(feedId) {
-        try {
-            const success = await deleteNewsFeed(feedId);
-            if (success) {
-                // Remove the feed from the UI
-                const newsItem = document.querySelector(`.news-item[data-feed-id="${feedId}"]`);
-                if (newsItem && newsItem.parentNode) {
-                    newsItem.parentNode.removeChild(newsItem);
-                    toggleEmptyState();
-                }
-            }
-        } catch (error) {
-            console.error('Error deleting feed:', error);
-        }
-    }
-    
-    // Function to create a dropdown menu for the three dots
-    function createDropdownMenu(feedId) {
-        const dropdown = document.createElement('div');
-        dropdown.className = 'news-menu-dropdown';
-        
-        const menu = document.createElement('ul');
-        
-        const deleteItem = document.createElement('li');
-        deleteItem.className = 'delete';
-        deleteItem.textContent = 'Delete news feed';
-        deleteItem.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const newsItem = this.closest('.news-item');
-            
-            if (newsItem) {
-                // If we have a feed ID stored, use the API to delete it
-                if (newsItem.dataset.feedId) {
-                    handleDeleteFeed(newsItem.dataset.feedId);
-                } else {
-                    // For sample data just remove from DOM
-                    if (newsItem.parentNode) {
-                        newsItem.parentNode.removeChild(newsItem);
-                    }
-                }
-                
-                closeAllDropdowns(); // Close dropdown after action
-                toggleEmptyState(); // Check if we need to show empty state
-            }
-        });
-        
-        menu.appendChild(deleteItem);
-        dropdown.appendChild(menu);
-        
-        return dropdown;
-    }
-    
-    // Function to close all open dropdown menus
-    function closeAllDropdowns() {
-        const dropdowns = document.querySelectorAll('.news-menu-dropdown.show');
-        dropdowns.forEach(dropdown => {
-            dropdown.classList.remove('show');
-        });
-    }
-    
-    // Add click handler to close dropdowns when clicking outside
-    document.addEventListener('click', function() {
-        closeAllDropdowns();
-    });
     
     // Function to generate news item with dynamic data
     function generateNewsItem(newsData, isSampleData = true, feedId = null) {
@@ -1013,29 +828,103 @@ document.addEventListener('DOMContentLoaded', () => {
         return newsItem;
     }
     
-    // Function to update news container with data
-    function updateNewsContainer(newsData, isSampleData = true) {
-        // Add news item
-        const newsItem = generateNewsItem(newsData, isSampleData);
-        newsContainer.appendChild(newsItem);
+    // Function to create a dropdown menu for the three dots
+    function createDropdownMenu(feedId) {
+        const dropdown = document.createElement('div');
+        dropdown.className = 'news-menu-dropdown';
         
-        // Update the output view
-        updateOutputView();
+        const menu = document.createElement('ul');
+        
+        const deleteItem = document.createElement('li');
+        deleteItem.className = 'delete';
+        deleteItem.textContent = 'Delete news feed';
+        deleteItem.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const newsItem = this.closest('.news-item');
+            
+            if (newsItem) {
+                // If we have a feed ID stored, use the API to delete it
+                if (newsItem.dataset.feedId) {
+                    handleDeleteFeed(newsItem.dataset.feedId);
+                } else {
+                    // For sample data just remove from DOM
+                    if (newsItem.parentNode) {
+                        newsItem.parentNode.removeChild(newsItem);
+                    }
+                }
+                
+                closeAllDropdowns(); // Close dropdown after action
+                toggleEmptyState(); // Check if we need to show empty state
+            }
+        });
+        
+        menu.appendChild(deleteItem);
+        dropdown.appendChild(menu);
+        
+        return dropdown;
     }
     
-    // Function to clear news container and show empty state
-    function clearNewsContainer() {
-        newsContainer.innerHTML = '';
-        toggleEmptyState();
+    // Function to close all open dropdown menus
+    function closeAllDropdowns() {
+        const dropdowns = document.querySelectorAll('.news-menu-dropdown.show');
+        dropdowns.forEach(dropdown => {
+            dropdown.classList.remove('show');
+        });
     }
     
-    // Event listeners for UI navigation
-    // Event listener for empty state preview button
-    emptyPreviewButton.addEventListener('click', () => {
-        updateNewsContainer(sampleNewsData);
+    // Add click handler to close dropdowns when clicking outside
+    document.addEventListener('click', function() {
+        closeAllDropdowns();
     });
-
-    // Subscribe to real-time updates for the current user
+    
+    // Function to handle deleting a news feed
+    async function handleDeleteFeed(feedId) {
+        try {
+            const success = await deleteNewsFeed(feedId);
+            if (success) {
+                // Remove the feed from the UI
+                const newsItem = document.querySelector(`.news-item[data-feed-id="${feedId}"]`);
+                if (newsItem && newsItem.parentNode) {
+                    newsItem.parentNode.removeChild(newsItem);
+                    toggleEmptyState();
+                }
+            }
+        } catch (error) {
+            console.error('Error deleting feed:', error);
+        }
+    }
+    
+    // Function to toggle empty state visibility based on news items
+    function toggleEmptyState() {
+        const hasNewsItems = newsContainer.children.length > 0;
+        
+        if (hasNewsItems) {
+            emptyState.style.display = 'none';
+            newsContainer.style.display = 'block';
+        } else {
+            emptyState.style.display = 'flex';
+            newsContainer.style.display = 'none';
+        }
+    }
+    
+    // Function to update the output view with news content
+    function updateOutputView() {
+        // Update the date display
+        const newsDate = document.querySelector('.news-date');
+        if (newsDate) {
+            newsDate.textContent = getFormattedDate();
+        }
+        
+        // Check if empty state should be shown
+        toggleEmptyState();
+        
+        // For mobile view, scroll to the output section
+        if (window.innerWidth <= 768) {
+            outputSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+    
+    // Subscribe to real-time updates
     function setupRealTimeSubscription() {
         // Unsubscribe if we already have a subscription
         if (activeSubscription) {
@@ -1044,11 +933,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Subscribe to feed changes
         activeSubscription = subscribeToNewsFeeds(
-            currentUserId,
             // Handle new feed insertion
             (newFeed) => {
                 // Reload the feeds to show the latest
-                loadUserNewsFeeds();
+                loadNewsFeeds();
             },
             // Handle feed deletion
             (deletedFeed) => {
@@ -1068,8 +956,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setupTagKeyboardNavigation();
         initializeCheckboxes();
         
-        // Load user's news feeds
-        loadUserNewsFeeds();
+        // Load news feeds for current submission
+        loadNewsFeeds();
         
         // Setup real-time subscription
         setupRealTimeSubscription();

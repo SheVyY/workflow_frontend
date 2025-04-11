@@ -1,0 +1,420 @@
+// Import the unified data service
+import { 
+    fetchNewsFeeds, 
+    deleteNewsFeed, 
+    subscribeToNewsFeeds, 
+    getLatestNewsFeed, 
+    fetchSampleNewsData,
+    generateSubmissionId, 
+    saveFormSubmission, 
+    getFeedsBySubmissionId 
+} from './services/dataService.js';
+
+import { sendFormDataToWebhook } from './services/webhookService.js';
+import { generateNewsItem, closeAllDropdowns } from './components/NewsItem.js';
+import { createTag, collectFormData, validateFormData, isValidEmail, showFieldError, clearFieldError } from './components/FormHandler.js';
+import { setupAccessibilityAnnouncements, setupTagKeyboardNavigation, showToast, showLoadingState, hideLoadingState, toggleEmptyState, debounce } from './utils/UIHelpers.js';
+
+/**
+ * Main application initialization
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    const sourceInput = document.getElementById('source-input');
+    const emailInput = document.getElementById('email-input');
+    const sourcesContainer = document.getElementById('sources-container');
+    const topicsContainer = document.getElementById('topics-container');
+    const startButton = document.getElementById('start-btn');
+    const languageSelect = document.getElementById('language-select');
+    
+    // New elements for output section
+    const outputSection = document.getElementById('output-section');
+    const newsContainer = document.getElementById('news-container');
+    const emptyState = document.getElementById('empty-state');
+    const emptyPreviewButton = document.getElementById('empty-preview-btn');
+    
+    // Track active subscriptions
+    let activeSubscription = null;
+    
+    // Track current submission ID
+    let currentSubmissionId = localStorage.getItem('submissionId') || null;
+
+    // Detect if device is mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Add focus/blur handlers for better mobile UX
+    if (isMobile) {
+        // Add small delay to handle virtual keyboard
+        const focusInputs = document.querySelectorAll('input, select');
+        focusInputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                setTimeout(() => {
+                    window.scrollTo(0, window.scrollY);
+                }, 300);
+            });
+        });
+    }
+
+    // Process multiple topics from a comma-separated string
+    function processTopicInput(inputValue) {
+        if (!inputValue.trim()) return;
+        
+        // Check if the input contains commas
+        if (inputValue.includes(',')) {
+            // Split by comma and process each topic
+            const topics = inputValue.split(',');
+            
+            for (const topic of topics) {
+                const cleanTopic = cleanTopicText(topic);
+                if (cleanTopic) {
+                    createTag(cleanTopic, 'topic', sourcesContainer, topicsContainer);
+                }
+            }
+        } else {
+            // Single topic
+            const cleanTopic = cleanTopicText(inputValue);
+            if (cleanTopic) {
+                createTag(cleanTopic, 'topic', sourcesContainer, topicsContainer);
+            }
+        }
+    }
+
+    // Update checkbox states based on selected topics
+    function updateCheckboxStates() {
+        const checkboxes = document.querySelectorAll('.topic-checkbox input');
+        
+        // If we have max topics selected, disable all unchecked checkboxes
+        const selectedTopics = document.querySelectorAll('.tag[data-type="topic"]').length;
+        const isMaxTopics = selectedTopics >= 3;
+        
+        checkboxes.forEach(checkbox => {
+            if (!checkbox.checked) {
+                checkbox.disabled = isMaxTopics;
+            }
+        });
+    }
+
+    // Initialize checkboxes for topics
+    function initializeCheckboxes() {
+        const checkboxes = document.querySelectorAll('.topic-checkbox input');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    // Add tag for checked topic
+                    createTag(this.value, 'topic', sourcesContainer, topicsContainer);
+                } else {
+                    // Remove tag for unchecked topic
+                    const topicTag = topicsContainer.querySelector(`.tag[data-value="${this.value}"]`);
+                    if (topicTag) {
+                        topicTag.remove();
+                    }
+                }
+                
+                // Update disabled state
+                updateCheckboxStates();
+            });
+        });
+        
+        // Initial update of checkbox states
+        updateCheckboxStates();
+    }
+
+    // Function to update the output view with news content
+    function updateOutputView() {
+        // Check if empty state should be shown
+        toggleEmptyState(emptyState, newsContainer);
+        
+        // For mobile view, scroll to the output section
+        if (window.innerWidth <= 768) {
+            outputSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    // Function to format news data from Supabase into the format needed for display
+    function formatNewsData(feedData) {
+        if (!feedData || !feedData.news_items || !feedData.news_items.length) {
+            return [];
+        }
+        
+        return feedData.news_items.map(item => ({
+            title: item.title,
+            content: item.content,
+            url: item.source_url || '#',
+            source: item.source
+        }));
+    }
+
+    // Function to load and display news feeds for the current submission
+    async function loadNewsFeeds() {
+        try {
+            // Show loading state
+            toggleEmptyState(emptyState, newsContainer);
+            
+            // If we have a submission ID, fetch feeds for it
+            if (currentSubmissionId) {
+                const feeds = await getFeedsBySubmissionId(currentSubmissionId);
+                
+                if (feeds && feeds.length > 0) {
+                    // Clear the container first
+                    newsContainer.innerHTML = '';
+                    
+                    // Display each feed
+                    feeds.forEach(feed => {
+                        const newsItems = formatNewsData(feed);
+                        if (newsItems.length > 0) {
+                            // Pass the feed ID to the generate function
+                            const newsItem = generateNewsItem(newsItems, false, feed.id);
+                            newsContainer.appendChild(newsItem);
+                        }
+                    });
+                    
+                    // Update the UI
+                    updateOutputView();
+                } else {
+                    // No feeds found for this submission ID
+                    if (emptyState) {
+                        const message = document.querySelector('.empty-state-message');
+                        if (message) {
+                            message.textContent = 'Your news feed is being prepared. Check back soon for updates or click "Show Preview" to see an example.';
+                        }
+                    }
+                    toggleEmptyState(emptyState, newsContainer);
+                }
+            } else {
+                // No submission ID, show empty state
+                toggleEmptyState(emptyState, newsContainer);
+            }
+        } catch (error) {
+            console.error('Error loading news feeds:', error);
+            toggleEmptyState(emptyState, newsContainer);
+        }
+    }
+
+    // Function to handle deleting a news feed
+    async function handleDeleteFeed(feedId) {
+        try {
+            const success = await deleteNewsFeed(feedId);
+            if (success) {
+                // Remove the feed from the UI
+                const newsItem = document.querySelector(`.news-item[data-feed-id="${feedId}"]`);
+                if (newsItem && newsItem.parentNode) {
+                    newsItem.parentNode.removeChild(newsItem);
+                    toggleEmptyState(emptyState, newsContainer);
+                }
+            }
+        } catch (error) {
+            console.error('Error deleting feed:', error);
+        }
+    }
+
+    // Function to process form submission
+    async function processFormSubmission() {
+        // Collect form data
+        const formData = collectFormData(sourcesContainer, topicsContainer, languageSelect, emailInput);
+        
+        // Validate form data
+        const errors = validateFormData(formData);
+        
+        if (errors.length > 0) {
+            // Show errors
+            errors.forEach(error => {
+                showToast(error, 'error');
+            });
+            return;
+        }
+        
+        // Show loading state
+        showLoadingState(startButton);
+        
+        try {
+            // Generate a new submission ID
+            const submissionId = generateSubmissionId();
+            
+            // Save current submission ID to localStorage
+            localStorage.setItem('submissionId', submissionId);
+            currentSubmissionId = submissionId;
+            
+            // 1. Save form submission to Supabase
+            const submission = await saveFormSubmission(formData, submissionId);
+            
+            if (!submission) {
+                throw new Error('Failed to save form submission to database');
+            }
+            
+            // 2. Send data to webhook
+            const webhookResponse = await sendFormDataToWebhook(formData);
+            
+            if (!webhookResponse) {
+                console.warn('Warning: Could not send data to webhook, but database submission was successful');
+            }
+            
+            // Success - show confirmation
+            showToast('Your subscription has been created! Check your email for updates.', 'success');
+            
+            // Scroll to output section and show empty state with explanation
+            toggleEmptyState(emptyState, newsContainer);
+            outputSection.scrollIntoView({ behavior: 'smooth' });
+        } catch (error) {
+            console.error('Error processing form submission:', error);
+            showToast('There was an error creating your subscription. Please try again.', 'error');
+        } finally {
+            // Hide loading state
+            hideLoadingState(startButton);
+        }
+    }
+
+    // Subscribe to real-time updates
+    function setupRealTimeSubscription() {
+        // Unsubscribe if we already have a subscription
+        if (activeSubscription) {
+            activeSubscription.unsubscribe();
+        }
+        
+        // Subscribe to feed changes
+        activeSubscription = subscribeToNewsFeeds(
+            // Handle new feed insertion
+            (newFeed) => {
+                // Reload the feeds to show the latest
+                loadNewsFeeds();
+            },
+            // Handle feed deletion
+            (deletedFeed) => {
+                // Find and remove the deleted feed from UI
+                const newsItem = document.querySelector(`.news-item[data-feed-id="${deletedFeed.id}"]`);
+                if (newsItem && newsItem.parentNode) {
+                    newsItem.parentNode.removeChild(newsItem);
+                    toggleEmptyState(emptyState, newsContainer);
+                }
+            }
+        );
+    }
+
+    // Add event listeners
+
+    // Add event listeners for source input
+    sourceInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            const value = sourceInput.value.trim();
+            
+            if (value) {
+                createTag(value, 'source', sourcesContainer, topicsContainer);
+                sourceInput.value = '';
+            }
+        }
+    });
+
+    // Handle pasted content for sources
+    sourceInput.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const paste = (e.clipboardData || window.clipboardData).getData('text');
+        
+        if (paste) {
+            const sources = paste.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+            
+            if (sources.length) {
+                for (const source of sources) {
+                    const cleanSource = source.trim();
+                    if (cleanSource) {
+                        createTag(cleanSource, 'source', sourcesContainer, topicsContainer);
+                    }
+                }
+                sourceInput.value = '';
+            }
+        }
+    });
+
+    // Email validation on blur
+    emailInput.addEventListener('blur', function() {
+        if (this.value.trim() !== '' && !isValidEmail(this.value.trim())) {
+            showFieldError(this, 'Please enter a valid email address');
+        } else {
+            clearFieldError(this);
+        }
+    });
+
+    // Real-time email validation
+    emailInput.addEventListener('input', debounce(function() {
+        const email = this.value.trim();
+        if (email && !isValidEmail(email)) {
+            showFieldError(this, 'Please enter a valid email address');
+        } else {
+            clearFieldError(this);
+        }
+    }, 500));
+
+    // Add click handler to close dropdowns when clicking outside
+    document.addEventListener('click', function() {
+        closeAllDropdowns();
+    });
+
+    // Handle delete feed event
+    window.addEventListener('delete-feed', function(e) {
+        if (e.detail && e.detail.feedId) {
+            handleDeleteFeed(e.detail.feedId);
+        }
+    });
+
+    // Handle check empty state event
+    window.addEventListener('check-empty-state', function() {
+        toggleEmptyState(emptyState, newsContainer);
+    });
+
+    // Handle update checkboxes event
+    window.addEventListener('update-checkboxes', function() {
+        updateCheckboxStates();
+    });
+
+    // Handle form submission
+    startButton.addEventListener('click', processFormSubmission);
+
+    // Handle preview button click
+    emptyPreviewButton.addEventListener('click', async function() {
+        // Show loading state on the button
+        showLoadingState(emptyPreviewButton);
+        emptyPreviewButton.textContent = 'Loading...';
+        
+        try {
+            // Fetch sample data from Supabase
+            const supabaseSampleData = await fetchSampleNewsData();
+            
+            // Clear any existing content
+            newsContainer.innerHTML = '';
+            
+            if (supabaseSampleData && supabaseSampleData.length > 0) {
+                // Use data from Supabase
+                const newsItem = generateNewsItem(supabaseSampleData, true);
+                newsContainer.appendChild(newsItem);
+                toggleEmptyState(emptyState, newsContainer);
+            } else {
+                // No sample data available
+                showToast('No sample data available. Please try again later.', 'error');
+                toggleEmptyState(emptyState, newsContainer, true);
+            }
+        } catch (error) {
+            console.error('Error loading preview:', error);
+            showToast('Error loading preview data. Please try again later.', 'error');
+            toggleEmptyState(emptyState, newsContainer, true);
+        } finally {
+            // Reset button state
+            hideLoadingState(emptyPreviewButton);
+            emptyPreviewButton.textContent = 'Show Preview';
+        }
+    });
+
+    // Initialize the app
+    function init() {
+        setupAccessibilityAnnouncements();
+        setupTagKeyboardNavigation();
+        initializeCheckboxes();
+        
+        // Load news feeds for current submission
+        loadNewsFeeds();
+        
+        // Setup real-time subscription
+        setupRealTimeSubscription();
+    }
+    
+    // Start the app
+    init();
+}); 

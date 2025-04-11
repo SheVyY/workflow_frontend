@@ -9,7 +9,10 @@
     "dev": "vite",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup-db": "node scripts/setupDb.js",
+    "test-connection": "node scripts/testConnection.js",
+    "check-db": "node scripts/checkSupabaseProject.js"
   },
   "keywords": [
     "news",
@@ -22,10 +25,13 @@
     "node": ">=14"
   },
   "devDependencies": {
+    "dotenv": "^16.0.3",
+    "pg": "^8.8.0",
     "serve": "^14.2.4",
     "vite": "^4.5.0"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.36.0"
+    "@supabase/supabase-js": "^2.49.4",
+    "uuid": "^11.1.0"
   }
 }

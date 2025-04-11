@@ -1,6 +1,178 @@
-# News Summary App
+# News Summary Application
 
-A web application that displays daily summaries of top articles from selected news sources.
+A web application that allows users to enter their news preferences, submit the form, and view personalized news summaries that update in real-time as new content is added to Supabase.
+
+## Features
+
+- Side-by-side layout with form and news output
+- Real-time news updates via Supabase
+- Responsive design
+- Form validation and submission tracking
+- News feed management with deletion capability
+- Sample data for preview mode from the database
+
+## Project Structure
+
+The project follows a modular organization to improve maintainability:
+
+```
+project/
+├── index.html            # Main HTML file
+├── src/
+│   ├── components/       # UI components
+│   │   ├── FormHandler.js  # Form input handling and validation
+│   │   └── NewsItem.js     # News display component
+│   ├── services/         # API services
+│   │   ├── dataService.js  # Unified data service (main entry point)
+│   │   ├── formService.js  # Form submission service
+│   │   ├── mockDataService.js # Offline/mock data provider
+│   │   ├── newsService.js  # News feed fetching and management
+│   │   └── supabase.js     # Supabase client configuration
+│   ├── styles/           # CSS styles
+│   │   └── styles.css      # Main stylesheet
+│   ├── utils/            # Utility functions
+│   │   ├── SampleData.js   # Sample news data for testing
+│   │   └── UIHelpers.js    # UI helper functions
+│   └── main.js           # Application entry point
+├── scripts/              # Utility scripts
+│   └── createTables.js   # Script to create database tables in Supabase
+└── sql/                  # Database setup
+    └── setup.sql         # Database schema and sample data
+```
+
+## Code Organization
+
+### Components
+
+- **FormHandler.js**: Manages form inputs, tag creation, validation, and submission
+- **NewsItem.js**: Handles rendering and interaction with news items
+
+### Services
+
+- **dataService.js**: Unified service that connects to Supabase database
+- **formService.js**: Handles form submissions and connects them to news feeds
+- **newsService.js**: Manages news feed fetching, deletion, and real-time updates
+- **supabase.js**: Configures the Supabase client for database operations
+
+### Utils
+
+- **UIHelpers.js**: Provides UI utility functions like toasts, loading states, etc.
+
+### Main Application
+
+The `main.js` file serves as the entry point, initializing the application and connecting all components.
+
+## Database Integration
+
+The application connects to a Supabase project for database storage and real-time updates. 
+Supabase provides a PostgreSQL database with real-time capabilities, making it ideal for 
+this application's needs.
+
+## Database Schema
+
+The application uses the following schema:
+
+1. **news_feeds**: Stores information about each news feed
+   - Linked to a specific form submission through submission_id
+
+2. **news_items**: Stores individual news stories
+   - Linked to a news feed through feed_id
+
+3. **form_submissions**: Tracks user form inputs
+   - Stores submission_id for linking to corresponding news feeds
+
+## Getting Started
+
+1. Clone the repository
+2. Install dependencies with `npm install`
+3. Copy `.env.template` to `.env.local` and fill in your Supabase credentials
+4. Run the SQL in `sql/create_tables.sql` on your Supabase project
+5. Run the SQL in `sql/fix_rls_policies.sql` to set up proper permissions
+6. Start the development server with `npm run dev`
+
+## Database Schema
+
+The application uses the following Supabase tables:
+
+1. **news_feeds**: Stores information about each news feed
+   - Linked to a specific form submission through submission_id
+
+2. **news_items**: Stores individual news stories
+   - Linked to a news feed through feed_id
+
+3. **form_submissions**: Tracks user form inputs
+   - Stores submission_id for linking to corresponding news feeds
+
+## Webhook Integration
+
+The app sends subscription data to a webhook endpoint with the following payload structure:
+
+```json
+{
+  "subscription": {
+    "email": "user@example.com",
+    "sources": [
+      {
+        "url": "https://example.com",
+        "method": "GET"
+      }
+    ],
+    "topics": ["technology", "business"],
+    "language": "english",
+    "schedule": "8AM_UTC"
+  },
+  "metadata": {
+    "timestamp": "2025-03-24T18:30:00.000Z",
+    "client": "web",
+    "version": "1.0.0"
+  }
+}
+```
+
+### Webhook Handler
+
+The application includes a webhook handler script that can receive incoming webhook data:
+
+```bash
+node scripts/webhookHandler.js
+```
+
+This will start a server that listens for webhook requests on port 3001. Incoming data will be processed and stored in your Supabase database.
+
+## Environment Configuration
+
+The application uses environment variables for configuration. Create a `.env.local` file with:
+
+```env
+# Supabase Configuration
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_DATABASE_NAME=your-database-name
+
+# Webhook Configuration
+VITE_WEBHOOK_URL=your-webhook-url
+```
+
+## Running the Application
+
+The application connects to Supabase by default. Make sure you have:
+1. Set up your Supabase project
+2. Created the required tables
+3. Added your Supabase credentials to `.env.local`
+4. Run `npm run dev` to start the development server
+
+## Development
+
+This project is set up with a modular structure to make it easier to maintain and extend. When adding new features:
+
+1. Create new components in the `components/` directory
+2. Add services for API interactions in the `services/` directory
+3. Place helper utilities in the `utils/` directory
+4. Update the main application file as needed
+
+## License
+
+MIT
 
 ## Setup
 
@@ -27,17 +199,9 @@ npm run dev
 Run the following SQL in the Supabase SQL Editor:
 
 ```sql
--- Create users table (if not using Supabase Auth)
-CREATE TABLE IF NOT EXISTS users (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  email TEXT UNIQUE NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
 -- Create news feeds table
 CREATE TABLE IF NOT EXISTS news_feeds (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   date DATE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -56,34 +220,26 @@ CREATE TABLE IF NOT EXISTS news_items (
 );
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS news_feeds_user_id_idx ON news_feeds(user_id);
 CREATE INDEX IF NOT EXISTS news_items_feed_id_idx ON news_items(feed_id);
 ```
 
-### 3. Enable Row-Level Security (RLS)
+### 3. Set Public Access
 
-Enable RLS on all tables and create policies:
+Since we're not using authentication for this testing phase, we'll set tables to be publicly readable:
 
 ```sql
+-- Enable public access for reading data
+CREATE POLICY "Allow public read access to news feeds" 
+  ON news_feeds FOR SELECT 
+  USING (true);
+
+CREATE POLICY "Allow public read access to news items" 
+  ON news_items FOR SELECT 
+  USING (true);
+
 -- Enable RLS
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE news_feeds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE news_items ENABLE ROW LEVEL SECURITY;
-
--- Create policies
-CREATE POLICY "Users can only access their own user data" 
-  ON users FOR ALL 
-  USING (id = auth.uid());
-
-CREATE POLICY "Users can only access their own feeds" 
-  ON news_feeds FOR ALL 
-  USING (user_id = auth.uid());
-
-CREATE POLICY "Users can access items from their feeds" 
-  ON news_items FOR ALL 
-  USING (feed_id IN (
-    SELECT id FROM news_feeds WHERE user_id = auth.uid()
-  ));
 ```
 
 ### 4. Sample Data Insertion
@@ -91,15 +247,10 @@ CREATE POLICY "Users can access items from their feeds"
 You can use this SQL to insert sample data for testing:
 
 ```sql
--- Insert a test user
-INSERT INTO users (id, email)
-VALUES ('user-123', 'test@example.com');
-
 -- Insert a sample news feed
-INSERT INTO news_feeds (id, user_id, title, date)
+INSERT INTO news_feeds (id, title, date)
 VALUES (
   'feed-123',
-  'user-123',
   'News Summary',
   CURRENT_DATE
 );
@@ -173,42 +324,31 @@ The application includes a `vercel.json` file with the following configuration:
 
 This configuration ensures that all static files, including images, are correctly served by Vercel.
 
-## Webhook Integration
+## Final Implementation Summary
 
-The app sends subscription data to a webhook endpoint (https://eoeyekcgqu06mpf.m.pipedream.net) with the following payload structure:
+This project implements a news summary application with the following features:
 
-```json
-{
-  "subscription": {
-    "email": "user@example.com",
-    "sources": [
-      {
-        "url": "https://example.com",
-        "method": "GET"
-      },
-      {
-        "url": "https://news.com",
-        "method": "GET"
-      }
-    ],
-    "topics": ["technology", "business"],
-    "language": "english",
-    "schedule": "8AM_UTC"
-  },
-  "metadata": {
-    "timestamp": "2025-03-24T18:30:00.000Z",
-    "client": "web",
-    "version": "1.0.0"
-  }
-}
-```
+1. **User Interface**:
+   - Side-by-side layout with form on the left and news output on the right
+   - Input validation for email, domains, and required fields
+   - Interactive tags for sources and topics
+   - Form submission with loading state
 
-## Tech Stack
+2. **Data Storage**:
+   - Supabase integration for database storage
+   - Support for form submissions, news feeds, and news items
+   - Real-time updates using Supabase's real-time capabilities
+   - Row-Level Security policies for data protection
 
-- HTML5
-- CSS3
-- Vanilla JavaScript
-- Vercel Hosting
+3. **Webhook Integration**:
+   - Form submissions are sent to an external webhook endpoint
+   - Data from webhook can be processed and stored in the database
+   - Preview functionality pulls sample data from the database
+
+4. **Development Tools**:
+   - Scripts for setting up database tables and RLS policies
+   - SQL files for database schema and permissions
+   - Environment variable templates for easy configuration
 
 # Webhook Tester
 
