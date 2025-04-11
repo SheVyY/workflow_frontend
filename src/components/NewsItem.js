@@ -99,6 +99,11 @@ export function generateNewsItem(newsData, isSampleData = true, feedId = null, c
     const newsItem = document.createElement('div');
     newsItem.className = 'news-item';
     
+    // Mark if this is sample data
+    if (isSampleData) {
+        newsItem.dataset.isSample = "true";
+    }
+    
     // If we have a feed ID, store it for deletion
     if (feedId) {
         newsItem.dataset.feedId = feedId;
