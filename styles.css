@@ -760,6 +760,7 @@ select,
     padding: 16px;
     border-bottom: 1px solid #f0f0f0;
     background-color: #fff;
+    position: relative;
 }
 
 .news-icon {
@@ -1072,4 +1073,120 @@ select,
     position: absolute;
     left: 0;
     top: 3px; /* Adjusted to align with title */
+}
+
+/* Three-dots dropdown menu */
+.news-menu-dropdown {
+    position: absolute;
+    right: 10px;
+    top: 45px;
+    background-color: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    z-index: 100;
+    min-width: 120px;
+    padding: 8px 0;
+    display: none;
+}
+
+.news-menu-dropdown.show {
+    display: block;
+}
+
+.news-menu-dropdown ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.news-menu-dropdown li {
+    padding: 8px 16px;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.news-menu-dropdown li:hover {
+    background-color: #f5f5f5;
+}
+
+.news-menu-dropdown li.delete {
+    color: #d93025;
+}
+
+/* Empty state styles */
+.empty-state {
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 40px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-state-icon {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+}
+
+.empty-state-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.empty-state-message {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 20px;
+    max-width: 300px;
+}
+
+/* Position the menu button to accommodate dropdown */
+.news-header {
+    position: relative;
+}
+
+/* Sample data indicator */
+.sample-data-indicator {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: center;
+}
+
+.sample-data-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: rgba(253, 246, 236, 0.8);
+    border: 1px solid rgba(217, 119, 6, 0.2);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    color: #b45309;
+}
+
+.sample-data-badge svg {
+    opacity: 0.8;
+}
+
+/* Button container without preview button */
+.button-container {
+    display: flex;
+    margin-top: 2.5rem;
+}
+
+.start-btn {
+    margin: 0;
+    width: 100%;
 } 

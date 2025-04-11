@@ -7,9 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const languageSelect = document.getElementById('language-select');
     
     // New elements for output section
-    const previewButton = document.getElementById('preview-btn');
     const outputSection = document.getElementById('output-section');
     const newsContainer = document.getElementById('news-container');
+    const emptyState = document.getElementById('empty-state');
+    const emptyPreviewButton = document.getElementById('empty-preview-btn');
     
     // Webhook URL
     const webhookUrl = 'https://eoj7hczhcudxukm.m.pipedream.net';
@@ -694,6 +695,19 @@ document.addEventListener('DOMContentLoaded', () => {
         updateCheckboxStates();
     }
     
+    // Function to toggle empty state visibility based on news items
+    function toggleEmptyState() {
+        const hasNewsItems = newsContainer.children.length > 0;
+        
+        if (hasNewsItems) {
+            emptyState.style.display = 'none';
+            newsContainer.style.display = 'block';
+        } else {
+            emptyState.style.display = 'flex';
+            newsContainer.style.display = 'none';
+        }
+    }
+    
     // Function to update the output view with news content
     function updateOutputView() {
         // Update the date display
@@ -701,6 +715,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (newsDate) {
             newsDate.textContent = getFormattedDate();
         }
+        
+        // Check if empty state should be shown
+        toggleEmptyState();
         
         // For mobile view, scroll to the output section
         if (window.innerWidth <= 768) {
@@ -737,8 +754,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     ];
     
+    // Function to create a dropdown menu for the three dots
+    function createDropdownMenu() {
+        const dropdown = document.createElement('div');
+        dropdown.className = 'news-menu-dropdown';
+        
+        const menu = document.createElement('ul');
+        
+        const deleteItem = document.createElement('li');
+        deleteItem.className = 'delete';
+        deleteItem.textContent = 'Delete news feed';
+        deleteItem.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const newsItem = this.closest('.news-item');
+            if (newsItem && newsItem.parentNode) {
+                newsItem.parentNode.removeChild(newsItem);
+                closeAllDropdowns(); // Close dropdown after action
+                toggleEmptyState(); // Check if we need to show empty state
+            }
+        });
+        
+        menu.appendChild(deleteItem);
+        dropdown.appendChild(menu);
+        
+        return dropdown;
+    }
+    
+    // Function to close all open dropdown menus
+    function closeAllDropdowns() {
+        const dropdowns = document.querySelectorAll('.news-menu-dropdown.show');
+        dropdowns.forEach(dropdown => {
+            dropdown.classList.remove('show');
+        });
+    }
+    
+    // Add click handler to close dropdowns when clicking outside
+    document.addEventListener('click', function() {
+        closeAllDropdowns();
+    });
+    
     // Function to generate news item with dynamic data
-    function generateNewsItem(newsData) {
+    function generateNewsItem(newsData, isSampleData = true) {
         // Create news item container
         const newsItem = document.createElement('div');
         newsItem.className = 'news-item';
@@ -792,10 +848,25 @@ document.addEventListener('DOMContentLoaded', () => {
             </svg>
         `;
         
+        // Create dropdown menu
+        const dropdown = createDropdownMenu();
+        
+        // Add event listener to toggle dropdown
+        menuBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            
+            // Close all other dropdowns first
+            closeAllDropdowns();
+            
+            // Toggle this dropdown
+            dropdown.classList.toggle('show');
+        });
+        
         // Assemble header
         header.appendChild(icon);
         header.appendChild(titleDiv);
         header.appendChild(menuBtn);
+        header.appendChild(dropdown);
         
         // Create content
         const content = document.createElement('div');
@@ -829,6 +900,21 @@ document.addEventListener('DOMContentLoaded', () => {
             content.appendChild(story);
         });
         
+        // Add sample data indicator if it's a preview
+        if (isSampleData) {
+            const sampleIndicator = document.createElement('div');
+            sampleIndicator.className = 'sample-data-indicator';
+            sampleIndicator.innerHTML = `
+                <div class="sample-data-badge">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8C1.5 11.59 4.41 14.5 8 14.5C11.59 14.5 14.5 11.59 14.5 8C14.5 4.41 11.59 1.5 8 1.5ZM8.75 11H7.25V9.5H8.75V11ZM8.75 8.75H7.25V5H8.75V8.75Z" fill="currentColor"/>
+                    </svg>
+                    <span>Sample data</span>
+                </div>
+            `;
+            content.appendChild(sampleIndicator);
+        }
+        
         // Assemble news item
         newsItem.appendChild(header);
         newsItem.appendChild(content);
@@ -837,20 +923,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Function to update news container with data
-    function updateNewsContainer(newsData) {
-        // Clear existing content
-        newsContainer.innerHTML = '';
-        
+    function updateNewsContainer(newsData, isSampleData = true) {
         // Add news item
-        const newsItem = generateNewsItem(newsData);
+        const newsItem = generateNewsItem(newsData, isSampleData);
         newsContainer.appendChild(newsItem);
         
         // Update the output view
         updateOutputView();
     }
-
+    
+    // Function to clear news container and show empty state
+    function clearNewsContainer() {
+        newsContainer.innerHTML = '';
+        toggleEmptyState();
+    }
+    
     // Event listeners for UI navigation
-    previewButton.addEventListener('click', () => {
+    // Event listener for empty state preview button
+    emptyPreviewButton.addEventListener('click', () => {
         updateNewsContainer(sampleNewsData);
     });
 
@@ -860,11 +950,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setupTagKeyboardNavigation();
         initializeCheckboxes();
         
-        // Initialize preview button for testing
-        previewButton.disabled = false;
-        
-        // Initial output display with sample data
-        updateNewsContainer(sampleNewsData);
+        // Set initial empty state
+        clearNewsContainer();
     }
     
     init();
