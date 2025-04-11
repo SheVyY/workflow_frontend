@@ -69,11 +69,15 @@ export async function fetchMultipleCategories() {
     // Fall back to local data if Supabase didn't return anything
     console.log('Supabase sample data not available, using local sample data');
     
+    // Get current date to generate sample dates
+    const now = new Date();
+    
     // Create sample data with multiple categories that match the checkbox options exactly
     const categories = [
       {
         id: 'sample-1',
         category: 'Technology',
+        date: new Date(now.getTime() - 10 * 60000).toISOString(), // 10 minutes ago
         news_items: [
           {
             id: 'item-1',
@@ -94,6 +98,7 @@ export async function fetchMultipleCategories() {
       {
         id: 'sample-2',
         category: 'Finance',
+        date: new Date(now.getTime() - 35 * 60000).toISOString(), // 35 minutes ago
         news_items: [
           {
             id: 'item-3',
@@ -114,6 +119,7 @@ export async function fetchMultipleCategories() {
       {
         id: 'sample-3',
         category: 'Business', 
+        date: new Date(now.getTime() - 2 * 3600000).toISOString(), // 2 hours ago
         news_items: [
           {
             id: 'item-5',
@@ -162,6 +168,7 @@ export async function fetchMultipleCategories() {
       {
         id: 'sample-4',
         category: 'World News',
+        date: new Date(now.getTime() - 4 * 3600000).toISOString(), // 4 hours ago
         news_items: [
           {
             id: 'item-11',
@@ -182,6 +189,7 @@ export async function fetchMultipleCategories() {
       {
         id: 'sample-5',
         category: 'Environment',
+        date: new Date(now.getTime() - 12 * 3600000).toISOString(), // 12 hours ago
         news_items: [
           {
             id: 'item-13',

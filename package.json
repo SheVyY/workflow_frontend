@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "setup-db": "node scripts/setupDb.js",
     "test-connection": "node scripts/testConnection.js",
-    "check-db": "node scripts/checkSupabaseProject.js"
+    "check-db": "node scripts/checkSupabaseProject.js",
+    "generate-test-data": "node scripts/generate-test-data.js"
   },
   "keywords": [
     "news",

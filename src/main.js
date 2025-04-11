@@ -508,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const newsItems = formatNewsData(feed);
                     if (newsItems.length > 0) {
                         // Make sure we mark these as sample data for proper handling
-                        const newsItem = generateNewsItem(newsItems, true, feed.id, feed.category);
+                        const newsItem = generateNewsItem(newsItems, true, feed.id, feed.category, feed.date);
                         newsContainer.appendChild(newsItem);
                     }
                 });
@@ -550,6 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fallbackFeed = {
                     id: 'fallback-1',
                     category: 'Preview',
+                    date: new Date().toISOString(), // current time
                     news_items: [
                         {
                             id: 'fallback-item-1',
@@ -562,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 
                 const newsItems = formatNewsData(fallbackFeed);
-                const newsItem = generateNewsItem(newsItems, true, fallbackFeed.id, fallbackFeed.category);
+                const newsItem = generateNewsItem(newsItems, true, fallbackFeed.id, fallbackFeed.category, fallbackFeed.date);
                 
                 // Add the fallback item to the container
                 newsContainer.appendChild(newsItem);

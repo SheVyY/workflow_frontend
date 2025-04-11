@@ -3,12 +3,24 @@
  * Renders a single news item with all its stories
  */
 
-// Function to get formatted date for display (e.g., "April 11, 8AM")
-function getFormattedDate() {
-    const now = new Date();
-    const options = { month: 'long', day: 'numeric' };
-    const dateString = now.toLocaleDateString('en-US', options);
-    return `${dateString}, 8AM`;
+/**
+ * Get formatted date for display
+ * @param {Date|string} customDate - Optional custom date to format (defaults to current date/time)
+ * @returns {string} - Formatted date like "April 11, 8:30 AM"
+ */
+function getFormattedDate(customDate = null) {
+    // Use provided custom date or current date
+    const date = customDate ? new Date(customDate) : new Date();
+    
+    // Format the date part (April 11)
+    const dateOptions = { month: 'long', day: 'numeric' };
+    const dateString = date.toLocaleDateString('en-US', dateOptions);
+    
+    // Format the time part (8:30 AM)
+    const timeOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+    const timeString = date.toLocaleTimeString('en-US', timeOptions);
+    
+    return `${dateString}, ${timeString}`;
 }
 
 // Function to create a dropdown menu for the three dots
@@ -94,7 +106,7 @@ export function closeAllDropdowns() {
 }
 
 // Function to generate news item with dynamic data
-export function generateNewsItem(newsData, isSampleData = true, feedId = null, category = 'News Summary') {
+export function generateNewsItem(newsData, isSampleData = true, feedId = null, category = 'News Summary', customDate = null) {
     // Create news item container
     const newsItem = document.createElement('div');
     newsItem.className = 'news-item';
@@ -146,7 +158,7 @@ export function generateNewsItem(newsData, isSampleData = true, feedId = null, c
     
     const date = document.createElement('span');
     date.className = 'news-date';
-    date.textContent = getFormattedDate();
+    date.textContent = getFormattedDate(customDate);
     
     titleDiv.appendChild(title);
     titleDiv.appendChild(articleCount);
