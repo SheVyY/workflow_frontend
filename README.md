@@ -1,13 +1,125 @@
 # News Summary App
 
-A simple app that provides daily summaries of top articles from selected news sources on topics of interest.
+A web application that displays daily summaries of top articles from selected news sources.
+
+## Setup
+
+1. Install dependencies:
+```
+npm install
+```
+
+2. Run the development server:
+```
+npm run dev
+```
+
+## Supabase Setup
+
+### 1. Create a Supabase Project
+
+1. Go to [Supabase](https://supabase.com/) and sign up or log in
+2. Create a new project and note your project URL and anon key
+3. Update the `.env.local` file with your credentials
+
+### 2. Create Database Tables
+
+Run the following SQL in the Supabase SQL Editor:
+
+```sql
+-- Create users table (if not using Supabase Auth)
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create news feeds table
+CREATE TABLE IF NOT EXISTS news_feeds (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  date DATE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create news items table
+CREATE TABLE IF NOT EXISTS news_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  feed_id UUID REFERENCES news_feeds(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  source TEXT,
+  source_url TEXT,
+  category TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS news_feeds_user_id_idx ON news_feeds(user_id);
+CREATE INDEX IF NOT EXISTS news_items_feed_id_idx ON news_items(feed_id);
+```
+
+### 3. Enable Row-Level Security (RLS)
+
+Enable RLS on all tables and create policies:
+
+```sql
+-- Enable RLS
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE news_feeds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE news_items ENABLE ROW LEVEL SECURITY;
+
+-- Create policies
+CREATE POLICY "Users can only access their own user data" 
+  ON users FOR ALL 
+  USING (id = auth.uid());
+
+CREATE POLICY "Users can only access their own feeds" 
+  ON news_feeds FOR ALL 
+  USING (user_id = auth.uid());
+
+CREATE POLICY "Users can access items from their feeds" 
+  ON news_items FOR ALL 
+  USING (feed_id IN (
+    SELECT id FROM news_feeds WHERE user_id = auth.uid()
+  ));
+```
+
+### 4. Sample Data Insertion
+
+You can use this SQL to insert sample data for testing:
+
+```sql
+-- Insert a test user
+INSERT INTO users (id, email)
+VALUES ('user-123', 'test@example.com');
+
+-- Insert a sample news feed
+INSERT INTO news_feeds (id, user_id, title, date)
+VALUES (
+  'feed-123',
+  'user-123',
+  'News Summary',
+  CURRENT_DATE
+);
+
+-- Insert sample news items
+INSERT INTO news_items (feed_id, title, content, source, source_url, category)
+VALUES
+('feed-123', 'Honor''s $10B AI Investment', 'Chinese smartphone maker Honor will invest $10B over 5 years to expand AI in its devices.', 'TechCrunch', 'https://techcrunch.com/article/1', 'technology'),
+('feed-123', 'Nvidia''s AI Growth & Stock Dip', 'AI chip sales drove a 78% revenue increase, but stock fell 8.5%. New Blackwell Ultra chip expected soon.', 'Reuters', 'https://reuters.com/article/1', 'finance'),
+('feed-123', 'U.S. Considers AI Chip Export Ban', 'Possible trade restrictions on AI chip sales to China could impact Nvidia''s H20 & B20 processors.', 'Financial Times', 'https://ft.com/article/1', 'business'),
+('feed-123', 'SoftBank''s $16B AI Investment', 'The firm plans to borrow $16B to expand AI initiatives, with another $8B loan possible in 2026.', 'WSJ', 'https://wsj.com/article/1', 'finance'),
+('feed-123', 'Nvidia''s AI Dominance', 'Nvidia''s H100 chip fueled its $3.45T valuation, solidifying its lead in AI, gaming, and robotics.', 'Bloomberg', 'https://bloomberg.com/article/1', 'technology');
+```
 
 ## Features
 
-- Select multiple news sources (up to 3)
-- Specify topics of interest (up to 3)
-- Choose your preferred language (English or Czech) for receiving summaries
-- Receive daily summaries to your email at 8:00 AM UTC
+- Daily news summaries from selected sources
+- Topic-based filtering
+- Clean, responsive UI
+- Real-time updates with Supabase
 
 ## Usage
 

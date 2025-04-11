@@ -1,3 +1,6 @@
+// Import the news service functions
+import { fetchNewsFeeds, deleteNewsFeed, subscribeToNewsFeeds, getLatestNewsFeed } from './newsService.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const sourceInput = document.getElementById('source-input');
     const emailInput = document.getElementById('email-input');
@@ -18,6 +21,41 @@ document.addEventListener('DOMContentLoaded', () => {
     // Limits
     const MAX_SOURCES = 3;
     const MAX_TOPICS = 3;
+
+    // Current user ID (in a real app, this would come from auth)
+    const currentUserId = 'user-123'; // Placeholder - replace with actual user ID from authentication
+    
+    // Track active subscriptions
+    let activeSubscription = null;
+
+    // Sample news data for testing/preview
+    const sampleNewsData = [
+        {
+            title: "Honor's $10B AI Investment",
+            content: "Chinese smartphone maker Honor will invest $10B over 5 years to expand AI in its devices.",
+            url: "#"
+        },
+        {
+            title: "Nvidia's AI Growth & Stock Dip",
+            content: "AI chip sales drove a 78% revenue increase, but stock fell 8.5%. New Blackwell Ultra chip expected soon.",
+            url: "#"
+        },
+        {
+            title: "U.S. Considers AI Chip Export Ban",
+            content: "Possible trade restrictions on AI chip sales to China could impact Nvidia's H20 & B20 processors.",
+            url: "#"
+        },
+        {
+            title: "SoftBank's $16B AI Investment",
+            content: "The firm plans to borrow $16B to expand AI initiatives, with another $8B loan possible in 2026.",
+            url: "#"
+        },
+        {
+            title: "Nvidia's AI Dominance",
+            content: "Nvidia's H100 chip fueled its $3.45T valuation, solidifying its lead in AI, gaming, and robotics.",
+            url: "#"
+        }
+    ];
 
     // Function to get yesterday's date in YYYY-MM-DD format
     function getYesterdayUTC() {
@@ -725,37 +763,75 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Sample news data for testing
-    const sampleNewsData = [
-        {
-            title: "Honor's $10B AI Investment",
-            content: "Chinese smartphone maker Honor will invest $10B over 5 years to expand AI in its devices.",
-            url: "#"
-        },
-        {
-            title: "Nvidia's AI Growth & Stock Dip",
-            content: "AI chip sales drove a 78% revenue increase, but stock fell 8.5%. New Blackwell Ultra chip expected soon.",
-            url: "#"
-        },
-        {
-            title: "U.S. Considers AI Chip Export Ban",
-            content: "Possible trade restrictions on AI chip sales to China could impact Nvidia's H20 & B20 processors.",
-            url: "#"
-        },
-        {
-            title: "SoftBank's $16B AI Investment",
-            content: "The firm plans to borrow $16B to expand AI initiatives, with another $8B loan possible in 2026.",
-            url: "#"
-        },
-        {
-            title: "Nvidia's AI Dominance",
-            content: "Nvidia's H100 chip fueled its $3.45T valuation, solidifying its lead in AI, gaming, and robotics.",
-            url: "#"
+    // Function to format news data from Supabase into the format needed for display
+    function formatNewsData(feedData) {
+        if (!feedData || !feedData.news_items || !feedData.news_items.length) {
+            return [];
         }
-    ];
+        
+        return feedData.news_items.map(item => ({
+            title: item.title,
+            content: item.content,
+            url: item.source_url || '#',
+            source: item.source
+        }));
+    }
+    
+    // Function to load and display user's news feeds
+    async function loadUserNewsFeeds() {
+        try {
+            // Show loading state
+            toggleEmptyState();
+            
+            // Get the latest news feed
+            const latestFeed = await getLatestNewsFeed(currentUserId);
+            
+            if (latestFeed) {
+                // Convert feed data to the format expected by our UI
+                const newsItems = formatNewsData(latestFeed);
+                
+                if (newsItems.length > 0) {
+                    // Display the news items (with isSampleData = false since this is real data)
+                    updateNewsContainer(newsItems, false);
+                    
+                    // Store the feed ID on the news container for deletion
+                    const newsItem = newsContainer.querySelector('.news-item');
+                    if (newsItem) {
+                        newsItem.dataset.feedId = latestFeed.id;
+                    }
+                } else {
+                    // No news items in the feed
+                    toggleEmptyState();
+                }
+            } else {
+                // No feeds found
+                toggleEmptyState();
+            }
+        } catch (error) {
+            console.error('Error loading news feeds:', error);
+            toggleEmptyState();
+        }
+    }
+    
+    // Function to handle deleting a news feed
+    async function handleDeleteFeed(feedId) {
+        try {
+            const success = await deleteNewsFeed(feedId);
+            if (success) {
+                // Remove the feed from the UI
+                const newsItem = document.querySelector(`.news-item[data-feed-id="${feedId}"]`);
+                if (newsItem && newsItem.parentNode) {
+                    newsItem.parentNode.removeChild(newsItem);
+                    toggleEmptyState();
+                }
+            }
+        } catch (error) {
+            console.error('Error deleting feed:', error);
+        }
+    }
     
     // Function to create a dropdown menu for the three dots
-    function createDropdownMenu() {
+    function createDropdownMenu(feedId) {
         const dropdown = document.createElement('div');
         dropdown.className = 'news-menu-dropdown';
         
@@ -767,8 +843,18 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteItem.addEventListener('click', function(e) {
             e.stopPropagation();
             const newsItem = this.closest('.news-item');
-            if (newsItem && newsItem.parentNode) {
-                newsItem.parentNode.removeChild(newsItem);
+            
+            if (newsItem) {
+                // If we have a feed ID stored, use the API to delete it
+                if (newsItem.dataset.feedId) {
+                    handleDeleteFeed(newsItem.dataset.feedId);
+                } else {
+                    // For sample data just remove from DOM
+                    if (newsItem.parentNode) {
+                        newsItem.parentNode.removeChild(newsItem);
+                    }
+                }
+                
                 closeAllDropdowns(); // Close dropdown after action
                 toggleEmptyState(); // Check if we need to show empty state
             }
@@ -794,10 +880,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Function to generate news item with dynamic data
-    function generateNewsItem(newsData, isSampleData = true) {
+    function generateNewsItem(newsData, isSampleData = true, feedId = null) {
         // Create news item container
         const newsItem = document.createElement('div');
         newsItem.className = 'news-item';
+        
+        // If we have a feed ID, store it for deletion
+        if (feedId) {
+            newsItem.dataset.feedId = feedId;
+        }
         
         // Create header
         const header = document.createElement('div');
@@ -849,7 +940,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         
         // Create dropdown menu
-        const dropdown = createDropdownMenu();
+        const dropdown = createDropdownMenu(feedId);
         
         // Add event listener to toggle dropdown
         menuBtn.addEventListener('click', function(e) {
@@ -944,14 +1035,44 @@ document.addEventListener('DOMContentLoaded', () => {
         updateNewsContainer(sampleNewsData);
     });
 
+    // Subscribe to real-time updates for the current user
+    function setupRealTimeSubscription() {
+        // Unsubscribe if we already have a subscription
+        if (activeSubscription) {
+            activeSubscription.unsubscribe();
+        }
+        
+        // Subscribe to feed changes
+        activeSubscription = subscribeToNewsFeeds(
+            currentUserId,
+            // Handle new feed insertion
+            (newFeed) => {
+                // Reload the feeds to show the latest
+                loadUserNewsFeeds();
+            },
+            // Handle feed deletion
+            (deletedFeed) => {
+                // Find and remove the deleted feed from UI
+                const newsItem = document.querySelector(`.news-item[data-feed-id="${deletedFeed.id}"]`);
+                if (newsItem && newsItem.parentNode) {
+                    newsItem.parentNode.removeChild(newsItem);
+                    toggleEmptyState();
+                }
+            }
+        );
+    }
+    
     // Initialize
     function init() {
         setupAccessibilityAnnouncements();
         setupTagKeyboardNavigation();
         initializeCheckboxes();
         
-        // Set initial empty state
-        clearNewsContainer();
+        // Load user's news feeds
+        loadUserNewsFeeds();
+        
+        // Setup real-time subscription
+        setupRealTimeSubscription();
     }
     
     init();

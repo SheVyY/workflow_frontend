@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "description": "News Summary App - Get daily summaries of top articles from selected news sources",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "npx serve",
-    "dev": "npx serve",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "keywords": [
     "news",
@@ -19,6 +22,10 @@
     "node": ">=14"
   },
   "devDependencies": {
-    "serve": "^14.2.4"
+    "serve": "^14.2.4",
+    "vite": "^4.5.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.36.0"
   }
 }
