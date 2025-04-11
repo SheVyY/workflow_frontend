@@ -60,7 +60,7 @@ export function closeAllDropdowns() {
 }
 
 // Function to generate news item with dynamic data
-export function generateNewsItem(newsData, isSampleData = true, feedId = null) {
+export function generateNewsItem(newsData, isSampleData = true, feedId = null, category = 'News Summary') {
     // Create news item container
     const newsItem = document.createElement('div');
     newsItem.className = 'news-item';
@@ -98,7 +98,7 @@ export function generateNewsItem(newsData, isSampleData = true, feedId = null) {
     titleDiv.className = 'news-title';
     
     const title = document.createElement('h2');
-    title.textContent = 'News Summary';
+    title.textContent = category;
     
     const date = document.createElement('span');
     date.className = 'news-date';
@@ -106,6 +106,33 @@ export function generateNewsItem(newsData, isSampleData = true, feedId = null) {
     
     titleDiv.appendChild(title);
     titleDiv.appendChild(date);
+    
+    // Create collapse toggle button
+    const collapseBtn = document.createElement('button');
+    collapseBtn.className = 'collapse-btn';
+    collapseBtn.setAttribute('aria-label', 'Collapse or expand news feed');
+    collapseBtn.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 9l-7 7-7-7" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    `;
+    
+    // Add event listener to toggle collapse
+    collapseBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        
+        const content = newsItem.querySelector('.news-content');
+        
+        // Toggle collapsed class on the news item
+        newsItem.classList.toggle('collapsed');
+        
+        // Update aria-expanded attribute
+        const isExpanded = !newsItem.classList.contains('collapsed');
+        collapseBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+        
+        // Flip the icon
+        collapseBtn.classList.toggle('rotated');
+    });
     
     // Create menu button
     const menuBtn = document.createElement('button');
@@ -136,6 +163,7 @@ export function generateNewsItem(newsData, isSampleData = true, feedId = null) {
     // Assemble header
     header.appendChild(icon);
     header.appendChild(titleDiv);
+    header.appendChild(collapseBtn);
     header.appendChild(menuBtn);
     header.appendChild(dropdown);
     

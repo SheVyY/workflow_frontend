@@ -5,6 +5,7 @@ import {
     subscribeToNewsFeeds, 
     getLatestNewsFeed, 
     fetchSampleNewsData,
+    fetchMultipleCategories,
     generateSubmissionId, 
     saveFormSubmission, 
     getFeedsBySubmissionId 
@@ -161,14 +162,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Clear the container first
                     newsContainer.innerHTML = '';
                     
-                    // Display each feed
+                    // Group feeds by category if available
+                    const groupedFeeds = {};
+                    
                     feeds.forEach(feed => {
-                        const newsItems = formatNewsData(feed);
-                        if (newsItems.length > 0) {
-                            // Pass the feed ID to the generate function
-                            const newsItem = generateNewsItem(newsItems, false, feed.id);
-                            newsContainer.appendChild(newsItem);
+                        const category = feed.category || 'News Summary';
+                        if (!groupedFeeds[category]) {
+                            groupedFeeds[category] = [];
                         }
+                        groupedFeeds[category].push(feed);
+                    });
+                    
+                    // Display each category of feeds
+                    Object.keys(groupedFeeds).forEach(category => {
+                        groupedFeeds[category].forEach(feed => {
+                            const newsItems = formatNewsData(feed);
+                            if (newsItems.length > 0) {
+                                // Pass the feed ID and category to the generate function
+                                const newsItem = generateNewsItem(newsItems, false, feed.id, category);
+                                newsContainer.appendChild(newsItem);
+                            }
+                        });
                     });
                     
                     // Update the UI
@@ -292,6 +306,30 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
 
+    // Function to toggle all news feeds (expand/collapse)
+    function toggleAllFeeds(expand = false) {
+        const newsItems = document.querySelectorAll('.news-item');
+        newsItems.forEach(item => {
+            const collapseBtn = item.querySelector('.collapse-btn');
+            
+            if (expand) {
+                // Expand all
+                item.classList.remove('collapsed');
+                if (collapseBtn) {
+                    collapseBtn.classList.remove('rotated');
+                    collapseBtn.setAttribute('aria-expanded', 'true');
+                }
+            } else {
+                // Collapse all
+                item.classList.add('collapsed');
+                if (collapseBtn) {
+                    collapseBtn.classList.add('rotated');
+                    collapseBtn.setAttribute('aria-expanded', 'false');
+                }
+            }
+        });
+    }
+
     // Add event listeners
 
     // Add event listeners for source input
@@ -378,17 +416,29 @@ document.addEventListener('DOMContentLoaded', () => {
         emptyPreviewButton.textContent = 'Loading...';
         
         try {
-            // Fetch sample data from Supabase
-            const supabaseSampleData = await fetchSampleNewsData();
+            // Fetch multiple categories of sample data
+            const categoryFeeds = await fetchMultipleCategories();
             
             // Clear any existing content
             newsContainer.innerHTML = '';
             
-            if (supabaseSampleData && supabaseSampleData.length > 0) {
-                // Use data from Supabase
-                const newsItem = generateNewsItem(supabaseSampleData, true);
-                newsContainer.appendChild(newsItem);
-                toggleEmptyState(emptyState, newsContainer);
+            if (categoryFeeds && categoryFeeds.length > 0) {
+                // Display each category feed
+                categoryFeeds.forEach(feed => {
+                    const newsItems = formatNewsData(feed);
+                    if (newsItems.length > 0) {
+                        const newsItem = generateNewsItem(newsItems, true, feed.id, feed.category);
+                        newsContainer.appendChild(newsItem);
+                    }
+                });
+                
+                // Hide empty state
+                if (emptyState) {
+                    emptyState.style.display = 'none';
+                }
+                
+                // Show news container
+                newsContainer.style.display = 'flex';
             } else {
                 // No sample data available
                 showToast('No sample data available. Please try again later.', 'error');
@@ -411,11 +461,78 @@ document.addEventListener('DOMContentLoaded', () => {
         setupTagKeyboardNavigation();
         initializeCheckboxes();
         
-        // Load news feeds for current submission
-        loadNewsFeeds();
+        // Add global click listener to close all dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.news-menu-btn')) {
+                closeAllDropdowns();
+            }
+        });
         
-        // Setup real-time subscription
-        setupRealTimeSubscription();
+        // Listen for delete feed events
+        window.addEventListener('delete-feed', function(e) {
+            if (e.detail && e.detail.feedId) {
+                handleDeleteFeed(e.detail.feedId);
+            }
+        });
+        
+        // Listen for empty state check events
+        window.addEventListener('check-empty-state', function() {
+            toggleEmptyState(emptyState, newsContainer);
+        });
+        
+        // Listen for checkbox update events
+        window.addEventListener('update-checkboxes', function() {
+            updateCheckboxStates();
+        });
+        
+        // Add expand/collapse all button to output header
+        const outputHeader = document.querySelector('.output-container .header');
+        if (outputHeader) {
+            const actionButtons = document.createElement('div');
+            actionButtons.className = 'feed-actions';
+            
+            // Expand all button
+            const expandAllBtn = document.createElement('button');
+            expandAllBtn.className = 'feed-action-btn';
+            expandAllBtn.textContent = 'Expand All';
+            expandAllBtn.addEventListener('click', () => toggleAllFeeds(true));
+            
+            // Collapse all button
+            const collapseAllBtn = document.createElement('button');
+            collapseAllBtn.className = 'feed-action-btn';
+            collapseAllBtn.textContent = 'Collapse All';
+            collapseAllBtn.addEventListener('click', () => toggleAllFeeds(false));
+            
+            actionButtons.appendChild(expandAllBtn);
+            actionButtons.appendChild(collapseAllBtn);
+            outputHeader.appendChild(actionButtons);
+        }
+        
+        // Setup source input
+        if (sourceInput) {
+            // Add enter key listener to create tags
+            sourceInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    e.preventDefault();
+                    
+                    const value = this.value.trim();
+                    if (value) {
+                        createTag(value, 'source', sourcesContainer, topicsContainer);
+                        this.value = '';
+                    }
+                }
+            });
+        }
+        
+        // Initial loading of news feeds if submission exists
+        if (currentSubmissionId) {
+            loadNewsFeeds();
+            
+            // Setup real-time subscription for updates
+            setupRealTimeSubscription();
+        } else {
+            toggleEmptyState(emptyState, newsContainer, true);
+        }
     }
     
     // Start the app

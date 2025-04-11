@@ -755,12 +755,12 @@ select,
 
 /* News Header */
 .news-header {
+    position: relative;
     display: flex;
     align-items: center;
-    padding: 16px;
+    padding: 0 0 16px 0;
     border-bottom: 1px solid #f0f0f0;
     background-color: #fff;
-    position: relative;
 }
 
 .news-icon {
@@ -801,7 +801,7 @@ select,
 
 /* News Content */
 .news-content {
-    padding: 20px;
+    padding: 20px 0 0 0;
     display: flex;
     flex-direction: column;
     gap: 28px;
@@ -934,7 +934,7 @@ select,
 .main-container::after {
     content: '';
     position: absolute;
-    left: 45%;
+    left: 40%;
     top: 40px;
     bottom: 40px;
     width: 1px;
@@ -949,20 +949,22 @@ select,
 }
 
 .form-container {
-    flex: 0 1 45%;
-    max-width: 450px;
+    flex: 0 1 40%;
+    max-width: 420px;
     padding-right: 40px;
 }
 
 .output-container {
-    flex: 0 1 55%;
-    max-width: 600px;
-    padding-left: 40px;
-    margin-left: 0;
+    flex: 1;
+    padding: 2rem 2rem 2rem 3rem;
+    position: relative;
+    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .output-container .header {
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.5rem;
 }
 
 .output-container h1 {
@@ -991,15 +993,16 @@ select,
     }
     
     .main-container::after {
-        left: 50%;
+        left: 45%;
     }
     
     .form-container {
         padding-right: 20px;
+        flex: 0 1 45%;
     }
     
     .output-container {
-        margin-left: 20px;
+        padding: 2rem;
     }
 }
 
@@ -1023,6 +1026,24 @@ select,
     .output-container {
         order: 2;
         margin-top: 30px;
+        padding: 1.5rem;
+    }
+    
+    .news-container {
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 0;
+        gap: 2rem;
+    }
+    
+    /* Responsive adjustments for collapsed items */
+    .news-header {
+        padding: 0 0 12px 0;
+    }
+    
+    .news-content {
+        padding: 12px 0 0 0;
+        gap: 20px;
     }
     
     /* Add horizontal separator for mobile */
@@ -1189,4 +1210,168 @@ select,
 .start-btn {
     margin: 0;
     width: 100%;
+}
+
+/* Scrollable news container */
+.news-container {
+    max-height: calc(100vh - 10rem);
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+    flex: 1;
+    scrollbar-width: thin;
+}
+
+/* Custom scrollbar styling */
+.news-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.news-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.news-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+.news-container::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+.output-container .news-container {
+    padding-bottom: 1.5rem;
+}
+
+/* Adjust feed items stacking */
+.news-item {
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    padding: 1.25rem;
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    margin-bottom: 0; /* Remove default margin since we're using gap */
+    transition: box-shadow 0.3s ease, transform 0.2s ease, padding 0.3s ease;
+}
+
+.news-item.collapsed {
+    padding-bottom: 1rem;
+}
+
+.news-item.collapsed .news-header {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.news-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+/* Collapsible news feed */
+.collapse-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.collapse-btn:hover {
+    background-color: #f5f5f5;
+}
+
+.collapse-btn.rotated svg {
+    transform: rotate(180deg);
+}
+
+.collapse-btn svg {
+    transition: transform 0.3s ease;
+}
+
+/* Collapsed news item */
+.news-item.collapsed .news-content {
+    display: none;
+}
+
+.news-item.collapsed .sample-data-indicator {
+    display: none;
+}
+
+/* Position header elements */
+.news-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 0 0 16px 0;
+    border-bottom: 1px solid #f0f0f0;
+    background-color: #fff;
+}
+
+.news-item.collapsed .news-header {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* Feed actions */
+.feed-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.feed-action-btn {
+    background: transparent;
+    border: 1px solid #e1e1e1;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.feed-action-btn:hover {
+    background-color: #f5f5f5;
+    border-color: #ccc;
+    color: #333;
+}
+
+/* Output header with actions */
+.output-container .header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.output-container .header h1 {
+    margin-bottom: 0.25rem;
+}
+
+.output-container .update-info {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .feed-actions {
+        margin-left: 0;
+        margin-top: 1rem;
+        width: 100%;
+    }
+    
+    .feed-action-btn {
+        flex: 1;
+        text-align: center;
+    }
 } 

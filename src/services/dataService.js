@@ -52,6 +52,78 @@ export async function fetchSampleNewsData() {
 }
 
 /**
+ * Fetch sample data for multiple categories to demonstrate the UI
+ * @returns {Promise<Array>} - Array of feed objects with different categories
+ */
+export async function fetchMultipleCategories() {
+  // Create sample data with multiple categories
+  const categories = [
+    {
+      id: 'sample-1',
+      category: 'Technology News',
+      news_items: [
+        {
+          id: 'item-1',
+          title: 'AI Revolution Continues',
+          content: 'Latest AI models demonstrate unprecedented capabilities in reasoning and code generation.',
+          source: 'TechDaily',
+          source_url: '#'
+        },
+        {
+          id: 'item-2',
+          title: 'New Chip Architecture',
+          content: 'Semiconductor companies unveil next-gen chip designs with 30% better energy efficiency.',
+          source: 'ChipWeekly',
+          source_url: '#'
+        }
+      ]
+    },
+    {
+      id: 'sample-2',
+      category: 'Financial Markets',
+      news_items: [
+        {
+          id: 'item-3',
+          title: 'Fed Signals Rate Changes',
+          content: 'Federal Reserve hints at potential rate adjustments in response to cooling inflation data.',
+          source: 'MarketWatch',
+          source_url: '#'
+        },
+        {
+          id: 'item-4',
+          title: 'Tech Stock Rebound',
+          content: 'Technology sector shows signs of recovery after months of volatility.',
+          source: 'Investors Today',
+          source_url: '#'
+        }
+      ]
+    },
+    {
+      id: 'sample-3',
+      category: 'Business Trends',
+      news_items: [
+        {
+          id: 'item-5',
+          title: 'Remote Work Evolution',
+          content: 'Companies adopt hybrid models as the new standard for workplace flexibility.',
+          source: 'Business Insider',
+          source_url: '#'
+        },
+        {
+          id: 'item-6',
+          title: 'Supply Chain Innovations',
+          content: 'New logistics technologies help businesses overcome persistent supply chain challenges.',
+          source: 'Supply Chain Review',
+          source_url: '#'
+        }
+      ]
+    }
+  ];
+  
+  return categories;
+}
+
+/**
  * Generate a submission ID for tracking
  * @returns {string} - Unique submission ID
  */
@@ -75,5 +147,25 @@ export async function saveFormSubmission(formData, submissionId) {
  * @returns {Promise<Array>} - Array of feeds matching the submission ID
  */
 export async function getFeedsBySubmissionId(submissionId) {
+  // If using mock mode and we don't have actual data yet, return sample data
+  const useMock = import.meta.env.VITE_USE_MOCK === 'true';
+  
+  if (useMock) {
+    try {
+      // Try getting real data first
+      const realData = await formSupabaseService.getFeedsBySubmissionId(submissionId);
+      if (realData && realData.length > 0) {
+        return realData;
+      }
+      
+      // If no real data, return mock data with multiple categories
+      return await fetchMultipleCategories();
+    } catch (error) {
+      console.log('Falling back to mock data due to error:', error);
+      return await fetchMultipleCategories();
+    }
+  }
+  
+  // Otherwise use real data from Supabase
   return formSupabaseService.getFeedsBySubmissionId(submissionId);
 } 

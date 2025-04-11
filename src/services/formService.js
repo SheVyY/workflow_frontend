@@ -58,6 +58,7 @@ export async function getFeedsBySubmissionId(submissionId) {
         submission_id,
         title,
         date,
+        category,
         news_items (
           id,
           title,
@@ -71,7 +72,16 @@ export async function getFeedsBySubmissionId(submissionId) {
       .order('date', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    
+    // Group feeds by category if needed
+    const feedsWithCategory = data.map(feed => {
+      return {
+        ...feed,
+        category: feed.category || 'News Summary' // Default category if not specified
+      };
+    });
+    
+    return feedsWithCategory || [];
   } catch (error) {
     console.error('Error fetching feeds by submission ID:', error);
     return [];
