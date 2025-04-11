@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     const sourceInput = document.getElementById('source-input');
-    const topicInput = document.getElementById('topic-input');
     const emailInput = document.getElementById('email-input');
     const sourcesContainer = document.getElementById('sources-container');
     const topicsContainer = document.getElementById('topics-container');
@@ -56,6 +55,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
         return domainRegex.test(domain);
     }
+
+    // Validate if source is English-only
+    function isEnglishSource(domain) {
+        // Only allow English sources
+        const englishTLDs = ['.com', '.org', '.net', '.io', '.co', '.uk', '.us', '.ca', '.au', '.nz'];
+        return englishTLDs.some(tld => domain.toLowerCase().endsWith(tld));
+    }
     
     // Count current tags in a container
     function countTags(container) {
@@ -91,14 +97,14 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const topic of topics) {
                 const cleanTopic = cleanTopicText(topic);
                 if (cleanTopic) {
-                    createTag(cleanTopic, topicsContainer, topicInput, false);
+                    createTag(cleanTopic, 'topic');
                 }
             }
         } else {
             // Single topic
             const cleanTopic = cleanTopicText(inputValue);
             if (cleanTopic) {
-                createTag(cleanTopic, topicsContainer, topicInput, false);
+                createTag(cleanTopic, 'topic');
             }
         }
     }
@@ -158,67 +164,90 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Update createTag function to use inline errors
-    function createTag(value, container, input, isSource = false) {
-        let cleanValue = value.trim();
-        
-        if (isSource) {
-            cleanValue = value.toLowerCase();
+    function createTag(value, type) {
+        if (type === 'source') {
+            let cleanValue = value.toLowerCase();
             cleanValue = cleanValue.replace(/^(https?:\/\/)?(www\.)?/, '');
             cleanValue = cleanValue.split('/')[0]; 
             cleanValue = cleanValue.split('?')[0];
             
             if (!isValidDomain(cleanValue)) {
-                showFieldError(container, 'Please enter a valid website domain');
-                return false;
+                showFieldError(sourcesContainer, 'Please enter a valid website domain');
+                return;
             }
-        }
-        
-        const maxItems = isSource ? MAX_SOURCES : MAX_TOPICS;
-        if (countTags(container) >= maxItems) {
-            showFieldError(container, `Maximum ${maxItems} ${isSource ? 'sources' : 'topics'} allowed`);
-            return false;
-        }
-        
-        // Check for duplicates
-        const existingTags = container.querySelectorAll('.tag');
-        for (const tag of existingTags) {
-            const existingValue = tag.textContent.trim().replace('×', '').trim();
-            if (existingValue.toLowerCase() === cleanValue.toLowerCase()) {
-                showFieldError(container, `This ${isSource ? 'source' : 'topic'} is already added`);
-                return false;
+
+            if (!isEnglishSource(cleanValue)) {
+                showFieldError(sourcesContainer, 'Only English sources are allowed. Please use sources with .com, .org, .net, .io, .co, .uk, .us, .ca, .au, or .nz domains.');
+                return;
+            }
+
+            if (document.querySelectorAll('.tag[data-type="source"]').length >= MAX_SOURCES) {
+                showFieldError(sourcesContainer, `Maximum ${MAX_SOURCES} sources allowed`);
+                return;
+            }
+
+            value = cleanValue; // Use the cleaned domain value
+        } else if (type === 'topic') {
+            // Always respect the checkbox state
+            const checkbox = document.querySelector(`.topic-checkbox input[value="${value}"]`);
+            if (!checkbox || !checkbox.checked) {
+                return;
+            }
+
+            if (document.querySelectorAll('.tag[data-type="topic"]').length >= MAX_TOPICS) {
+                checkbox.checked = false;
+                return;
             }
         }
 
-        // If we get here, clear any existing errors
-        clearFieldError(container);
+        // Check for duplicates
+        const existingTags = document.querySelectorAll(`.tag[data-type="${type}"]`);
+        for (const tag of existingTags) {
+            if (tag.textContent.trim().replace('×', '').trim() === value) {
+                if (type === 'source') {
+                    showFieldError(sourcesContainer, 'This source is already added');
+                }
+                return;
+            }
+        }
+        
+        // Clear any existing errors for sources
+        if (type === 'source') {
+            clearFieldError(sourcesContainer);
+        }
         
         // Create and add the tag
-        const newTag = document.createElement('div');
-        newTag.className = 'tag';
-        newTag.setAttribute('role', 'listitem');
-        newTag.innerHTML = `
-            ${cleanValue}
-            <button class="remove-btn" aria-label="Remove ${cleanValue}" tabindex="0">×</button>
+        const tag = document.createElement('div');
+        tag.className = 'tag';
+        tag.setAttribute('data-type', type);
+        tag.setAttribute('data-value', value);
+        tag.innerHTML = `
+            <span>${value}</span>
+            <button class="remove-tag" aria-label="Remove ${type}">×</button>
         `;
         
         // Add remove functionality
-        const removeBtn = newTag.querySelector('.remove-btn');
-        removeBtn.addEventListener('click', function() {
-            this.parentElement.remove();
-            if (countTags(container) < maxItems) {
-                input.style.display = '';
-                clearFieldError(container);
+        const removeBtn = tag.querySelector('.remove-tag');
+        removeBtn.addEventListener('click', () => {
+            tag.remove();
+            if (type === 'topic') {
+                // Uncheck the corresponding checkbox
+                const checkbox = document.querySelector(`.topic-checkbox input[value="${value}"]`);
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+                // Update disabled state for all checkboxes
+                updateCheckboxStates();
             }
         });
         
-        container.insertBefore(newTag, input);
-        input.value = '';
+        const container = type === 'topic' ? topicsContainer : sourcesContainer;
+        container.appendChild(tag);
         
-        if (countTags(container) >= maxItems) {
-            input.style.display = 'none';
+        // Always update checkbox states after adding a topic tag
+        if (type === 'topic') {
+            updateCheckboxStates();
         }
-        
-        return true;
     }
 
     // Create an accessible live region for screen reader announcements
@@ -370,26 +399,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter' || e.key === ',') {
             e.preventDefault();
             const value = sourceInput.value.trim();
+            
             if (value) {
-                // Split by comma and process each source
-                const sources = value.split(',');
-                for (const source of sources) {
-                    const cleanSource = source.trim();
-                    if (cleanSource) {
-                        createTag(cleanSource, sourcesContainer, sourceInput, true);
-                    }
-                }
+                createTag(value, 'source');
                 sourceInput.value = '';
             }
         }
     });
 
-    // Add event listeners for topic input
-    topicInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            processTopicInput(topicInput.value);
-            topicInput.value = '';
+    // Handle pasted content for sources
+    sourceInput.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const paste = (e.clipboardData || window.clipboardData).getData('text');
+        
+        if (paste) {
+            const sources = paste.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+            
+            if (sources.length) {
+                for (const source of sources) {
+                    const cleanSource = source.trim();
+                    if (cleanSource) {
+                        createTag(cleanSource, 'source');
+                    }
+                }
+                sourceInput.value = '';
+            }
         }
     });
 
@@ -407,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('keydown', (e) => {
             if (e.target.closest('.tag')) {
                 const tag = e.target.closest('.tag');
-                const removeBtn = tag.querySelector('.remove-btn');
+                const removeBtn = tag.querySelector('.remove-tag');
                 
                 if (e.key === 'Delete' || e.key === 'Backspace') {
                     e.preventDefault();
@@ -449,23 +483,34 @@ document.addEventListener('DOMContentLoaded', () => {
         element.classList.remove('loading');
     }
 
-    // Update form submission with loading states and submission tracking
-    startButton.addEventListener('click', async () => {
+    // Form submission handler
+    startButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+        console.log('Form submission started');
+
         // Prevent multiple submissions
         if (isSubmitting) {
+            console.log('Already submitting, preventing duplicate submission');
             return;
         }
 
-        const sources = Array.from(sourcesContainer.querySelectorAll('.tag'))
-            .map(tag => tag.textContent.trim().replace('×', '').trim())
-            .filter(source => source !== '');
+        // Get form values
+        const sources = Array.from(sourcesContainer.querySelectorAll('.tag')).map(tag => 
+            tag.querySelector('span').textContent.trim()
+        );
+        console.log('Sources:', sources);
 
-        const topics = Array.from(topicsContainer.querySelectorAll('.tag'))
-            .map(tag => tag.textContent.trim().replace('×', '').trim())
-            .filter(topic => topic !== '');
+        const topics = Array.from(document.querySelectorAll('.topic-checkbox input:checked')).map(checkbox => 
+            checkbox.value
+        );
+        console.log('Topics:', topics);
 
         const language = languageSelect.value;
+        console.log('Language:', language);
+
         const email = emailInput.value.trim();
+        console.log('Email:', email);
+
         let isValid = true;
 
         // Clear all existing errors first
@@ -497,8 +542,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!isValid) {
+            console.log('Form validation failed');
             return;
         }
+
+        console.log('Form validation passed, preparing to submit');
 
         // Set submitting state
         isSubmitting = true;
@@ -511,21 +559,33 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingState(emailInput);
 
         try {
+            console.log('Sending request to webhook:', webhookUrl);
+            const requestBody = {
+                sources: sources.map(source => ({
+                    url: source.startsWith('http') ? source : `https://${source}`,
+                    method: "GET"
+                })),
+                topics,
+                language,
+                email,
+                date: getYesterdayUTC()
+            };
+            console.log('Request body:', requestBody);
+
             const response = await fetch(webhookUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    sources: sources.map(source => source.startsWith('http') ? source : `https://${source}`),
-                    topics,
-                    language,
-                    email,
-                    date: getYesterdayUTC()
-                })
+                body: JSON.stringify(requestBody)
             });
 
+            console.log('Response status:', response.status);
+            const responseData = await response.text();
+            console.log('Response data:', responseData);
+
             if (response.ok) {
+                console.log('Submission successful');
                 showToast('Your news summary has been set up successfully!', 'success');
                 // Reset form
                 sourcesContainer.querySelectorAll('.tag').forEach(tag => tag.remove());
@@ -538,9 +598,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 startButton.textContent = 'Submitted';
                 startButton.classList.add('submitted');
             } else {
-                throw new Error('Failed to set up news summary');
+                throw new Error(`Failed to set up news summary: ${response.status} ${responseData}`);
             }
         } catch (error) {
+            console.error('Submission error:', error);
             showToast('Something went wrong. Please try again.', 'error');
             // Reset submitting state on error so user can try again
             isSubmitting = false;
@@ -551,9 +612,75 @@ document.addEventListener('DOMContentLoaded', () => {
             hideLoadingState(sourcesContainer);
             hideLoadingState(topicsContainer);
             hideLoadingState(emailInput);
+            console.log('Form submission completed');
         }
     });
 
     // Initialize keyboard navigation
     setupTagKeyboardNavigation();
+    
+    // Topic checkbox handlers
+    const topicCheckboxes = document.querySelectorAll('.topic-checkbox input[type="checkbox"]');
+    
+    // Add event listener at document level to catch clicks before they happen
+    document.addEventListener('click', function(event) {
+        // Only handle clicks on unchecked topic checkboxes
+        if (event.target.matches('.topic-checkbox input[type="checkbox"]:not(:checked)')) {
+            // If already at max topics, prevent checking and show message
+            const checkedCount = document.querySelectorAll('.topic-checkbox input[type="checkbox"]:checked').length;
+            if (checkedCount >= MAX_TOPICS) {
+                event.preventDefault();
+                event.stopPropagation();
+                showToast(`You can select maximum ${MAX_TOPICS} topics`, 'error');
+                return false;
+            }
+        }
+    }, true); // true = capture phase, runs before the default action
+    
+    // Handle changes in checkboxes
+    topicCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const value = this.value;
+            
+            if (this.checked) {
+                // Create tag for the selected topic
+                createTag(value, 'topic');
+            } else {
+                // Remove the corresponding tag
+                const tagToRemove = document.querySelector(`.tag[data-value="${value}"]`);
+                if (tagToRemove) {
+                    tagToRemove.remove();
+                }
+            }
+            
+            // Update disabled states after change
+            updateCheckboxStates();
+        });
+    });
+    
+    // Function to update checkbox states
+    function updateCheckboxStates() {
+        const checkedCount = document.querySelectorAll('.topic-checkbox input[type="checkbox"]:checked').length;
+        
+        // If we have the maximum number of topics selected, disable all unchecked boxes
+        topicCheckboxes.forEach(checkbox => {
+            if (!checkbox.checked) {
+                checkbox.disabled = checkedCount >= MAX_TOPICS;
+            }
+        });
+    }
+    
+    // Initialize checkbox states on page load
+    function initializeCheckboxes() {
+        // Check for pre-checked boxes and create tags
+        document.querySelectorAll('.topic-checkbox input[type="checkbox"]:checked').forEach(checkbox => {
+            createTag(checkbox.value, 'topic');
+        });
+        
+        // Set initial disabled states
+        updateCheckboxStates();
+    }
+    
+    // Run initialization
+    initializeCheckboxes();
 }); 
