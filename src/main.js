@@ -15,6 +15,9 @@ import { generateNewsItem, closeAllDropdowns } from './components/NewsItem.js';
 import { createTag, collectFormData, validateFormData, isValidEmail, showFieldError, clearFieldError } from './components/FormHandler.js';
 import { setupAccessibilityAnnouncements, setupTagKeyboardNavigation, showToast, showLoadingState, hideLoadingState, toggleEmptyState, debounce } from './utils/UIHelpers.js';
 
+// Import CSS directly - this ensures Vite processes it correctly in production
+import './styles/styles.css';
+
 /**
  * Main application initialization
  */

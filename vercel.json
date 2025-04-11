@@ -1,10 +1,28 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "index.html", "use": "@vercel/static" },
-    { "src": "*.{js,css,png,svg,jpg,jpeg,gif}", "use": "@vercel/static" }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/$1" }
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control", 
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
   ]
 } 

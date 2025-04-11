@@ -22,6 +22,22 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: './index.html'
+      },
+      output: {
+        // Ensure chunks have predictable names
+        manualChunks: undefined,
+        // Configure asset file names
+        assetFileNames: (assetInfo) => {
+          let extType = assetInfo.name.split('.').at(1);
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(extType)) {
+            extType = 'img';
+          }
+          return `assets/${extType}/[name]-[hash][extname]`;
+        },
+        // Configure chunks
+        chunkFileNames: 'assets/js/[name]-[hash].js',
+        // Configure entry files
+        entryFileNames: 'assets/js/[name]-[hash].js',
       }
     }
   }
