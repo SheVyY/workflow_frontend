@@ -767,9 +767,8 @@ select,
     position: relative;
     display: flex;
     align-items: center;
-    padding: 0 0 16px 0;
-    border-bottom: 1px solid #f0f0f0;
-    background-color: #fff;
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .news-icon {
@@ -779,18 +778,23 @@ select,
 
 .news-title {
     flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 .news-title h2 {
     font-size: 1.1rem;
     font-weight: 600;
-    margin-bottom: 4px;
+    margin-right: 0;
     color: #000;
 }
 
 .news-date {
-    font-size: 0.9rem;
-    color: #666;
+    margin-left: 10px;
+    color: #718096;
+    font-size: 0.85rem;
+    font-weight: 400;
 }
 
 .news-menu-btn {
@@ -829,7 +833,7 @@ select,
 .news-diamond {
     position: absolute;
     left: 0;
-    top: 3px; /* Adjusted to align with title */
+    top: 7px; /* Adjusted slightly to align with title in new structure */
     color: #0066cc;
     font-size: 12px;
 }
@@ -837,15 +841,15 @@ select,
 .news-story h3 {
     font-size: 1rem;
     font-weight: 600;
-    margin-bottom: 6px;
     color: #000;
     line-height: 1.3;
+    margin: 0;
 }
 
 .news-story p {
     font-size: 0.9rem;
     color: #333;
-    margin-bottom: 8px;
+    margin: 10px 0 8px 0;
     line-height: 1.4;
 }
 
@@ -1375,4 +1379,160 @@ select,
         flex: 1;
         text-align: center;
     }
-} 
+}
+
+/* Story title container with metadata */
+.story-title-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+    width: 100%;
+}
+
+.story-title-container h3 {
+    margin-bottom: 0;
+    flex: 1;
+    min-width: 200px;
+}
+
+.story-metadata {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-left: auto;
+}
+
+/* Badges for source and topic */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.source-badge {
+    background-color: rgba(0, 102, 204, 0.08);
+    color: #0066cc;
+    border: 1px solid rgba(0, 102, 204, 0.2);
+    position: relative;
+    padding-left: 8px;
+    font-family: 'Courier New', monospace;
+}
+
+.topic-badge {
+    background-color: rgba(82, 196, 26, 0.08);
+    color: #52c41a;
+    border: 1px solid rgba(82, 196, 26, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .story-title-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    
+    .story-metadata {
+        margin-left: 0;
+        max-width: 100%;
+    }
+    
+    .badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+        max-width: 130px;
+    }
+}
+
+/* News story adjustments for new layout */
+.news-story p {
+    margin-top: 10px;
+}
+
+/* Ensure proper spacing with the new structure */
+.news-story {
+    padding-left: 24px;
+}
+
+/* Article count badge styles */
+.article-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 12px 0 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #4a5568;
+    background-color: #edf2f7;
+    padding: 3px 10px;
+    border-radius: 12px;
+    line-height: 1.2;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s ease;
+}
+
+.article-count:hover {
+    background-color: #e2e8f0;
+}
+
+.article-count span {
+    font-weight: 600;
+    color: #2d3748;
+    margin-right: 4px;
+}
+
+/* Ensure news title has proper alignment with article count */
+.news-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.news-title h2 {
+    margin-right: 0;
+    font-weight: 600;
+}
+
+/* Make date more subtle and properly spaced */
+.news-date {
+    margin-left: 10px;
+    color: #718096;
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+
+/* Improve header spacing */
+.news-header {
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .news-title {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .article-count {
+        margin: 6px 0 6px 0;
+    }
+    
+    .news-date {
+        margin-left: 0;
+        margin-top: 4px;
+    }
+}

@@ -162,7 +162,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Clear the container first
                     newsContainer.innerHTML = '';
                     
-                    // Group feeds by category if available
+                    // Sort all feeds by date (newest first) before grouping
+                    feeds.sort((a, b) => {
+                        const dateA = new Date(a.date || 0);
+                        const dateB = new Date(b.date || 0);
+                        return dateB - dateA; // Descending order (newest first)
+                    });
+                    
+                    // Group feeds by category after sorting
                     const groupedFeeds = {};
                     
                     feeds.forEach(feed => {
@@ -180,8 +187,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         newsContainer.classList.remove('has-many-feeds');
                     }
                     
-                    // Display each category of feeds
-                    Object.keys(groupedFeeds).forEach(category => {
+                    // Get all categories sorted by the newest feed in each category
+                    const sortedCategories = Object.keys(groupedFeeds).sort((catA, catB) => {
+                        const latestFeedA = groupedFeeds[catA][0];
+                        const latestFeedB = groupedFeeds[catB][0];
+                        
+                        const dateA = latestFeedA ? new Date(latestFeedA.date || 0) : new Date(0);
+                        const dateB = latestFeedB ? new Date(latestFeedB.date || 0) : new Date(0);
+                        
+                        return dateB - dateA; // Newest first
+                    });
+                    
+                    // Display each category's feeds
+                    sortedCategories.forEach(category => {
+                        // Add each feed to the container (already sorted within category)
                         groupedFeeds[category].forEach(feed => {
                             const newsItems = formatNewsData(feed);
                             if (newsItems.length > 0) {

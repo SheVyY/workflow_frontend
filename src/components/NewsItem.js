@@ -23,16 +23,50 @@ function createDropdownMenu(feedId) {
     deleteItem.textContent = 'Delete news feed';
     deleteItem.addEventListener('click', function(e) {
         e.stopPropagation();
+        e.preventDefault();
+        
         const newsItem = this.closest('.news-item');
         
         if (newsItem) {
             // If we have a feed ID stored, use the API to delete it
             if (newsItem.dataset.feedId) {
+                const feedId = newsItem.dataset.feedId;
+                const isSampleFeed = feedId && feedId.toString().startsWith('sample-');
+                
+                console.log('Deleting feed with ID:', feedId, isSampleFeed ? '(sample)' : '');
+                
+                // Dispatch delete event for real data
                 window.dispatchEvent(new CustomEvent('delete-feed', { 
-                    detail: { feedId: newsItem.dataset.feedId } 
+                    detail: { 
+                        feedId: feedId,
+                        isSample: isSampleFeed
+                    } 
                 }));
+                
+                // For sample data, just remove from DOM
+                if (isSampleFeed) {
+                    console.log('Removing sample data item from DOM');
+                    if (newsItem.parentNode) {
+                        newsItem.parentNode.removeChild(newsItem);
+                        // Dispatch event to check empty state
+                        window.dispatchEvent(new CustomEvent('check-empty-state'));
+                    }
+                } else {
+                    // For real data, also manually remove from DOM as backup
+                    setTimeout(() => {
+                        if (document.contains(newsItem)) {
+                            console.log('Manual removal as backup');
+                            if (newsItem.parentNode) {
+                                newsItem.parentNode.removeChild(newsItem);
+                                // Dispatch event to check empty state
+                                window.dispatchEvent(new CustomEvent('check-empty-state'));
+                            }
+                        }
+                    }, 500);
+                }
             } else {
-                // For sample data just remove from DOM
+                // For items without feed ID
+                console.log('Removing item without feed ID');
                 if (newsItem.parentNode) {
                     newsItem.parentNode.removeChild(newsItem);
                 }
@@ -100,11 +134,17 @@ export function generateNewsItem(newsData, isSampleData = true, feedId = null, c
     const title = document.createElement('h2');
     title.textContent = category;
     
+    // Create article count badge
+    const articleCount = document.createElement('div');
+    articleCount.className = 'article-count';
+    articleCount.innerHTML = `<span>${newsData.length}</span> article${newsData.length !== 1 ? 's' : ''}`;
+    
     const date = document.createElement('span');
     date.className = 'news-date';
     date.textContent = getFormattedDate();
     
     titleDiv.appendChild(title);
+    titleDiv.appendChild(articleCount);
     titleDiv.appendChild(date);
     
     // Create collapse toggle button
@@ -180,8 +220,60 @@ export function generateNewsItem(newsData, isSampleData = true, feedId = null, c
         diamond.className = 'news-diamond';
         diamond.textContent = '◆';
         
+        // Create a container for the title and metadata
+        const titleContainer = document.createElement('div');
+        titleContainer.className = 'story-title-container';
+        
         const storyTitle = document.createElement('h3');
         storyTitle.textContent = item.title;
+        
+        // Add metadata container
+        const metadataContainer = document.createElement('div');
+        metadataContainer.className = 'story-metadata';
+        
+        // Add source badge if available
+        if (item.source) {
+            // Extract domain from source if it's a URL
+            let sourceName = item.source;
+            if (sourceName.includes('/')) {
+                try {
+                    // Attempt to parse as URL and get hostname
+                    const url = new URL(sourceName.startsWith('http') ? sourceName : `https://${sourceName}`);
+                    sourceName = url.hostname.replace('www.', '');
+                } catch (e) {
+                    // Not a valid URL, just use as is
+                    sourceName = sourceName.split('/')[0].trim();
+                }
+            }
+            
+            // Clean up source name to make it look like a proper domain
+            sourceName = sourceName.replace('www.', '').toLowerCase();
+            
+            // Remove all spaces for valid domain format
+            sourceName = sourceName.replace(/\s+/g, '');
+            
+            // Add .com if no domain extension exists
+            if (!sourceName.includes('.')) {
+                sourceName += '.com';
+            }
+            
+            const sourceBadge = document.createElement('span');
+            sourceBadge.className = 'badge source-badge';
+            sourceBadge.title = `Source: ${sourceName}`;
+            sourceBadge.textContent = sourceName;
+            metadataContainer.appendChild(sourceBadge);
+        }
+        
+        // Add category/topic badge - use exactly as provided, no mapping
+        const topicBadge = document.createElement('span');
+        topicBadge.className = 'badge topic-badge';
+        topicBadge.title = `Category: ${category}`;
+        topicBadge.textContent = category;
+        metadataContainer.appendChild(topicBadge);
+        
+        // Assemble title container
+        titleContainer.appendChild(storyTitle);
+        titleContainer.appendChild(metadataContainer);
         
         const storyContent = document.createElement('p');
         storyContent.textContent = item.content;
@@ -192,7 +284,7 @@ export function generateNewsItem(newsData, isSampleData = true, feedId = null, c
         readMore.textContent = 'Read more';
         
         story.appendChild(diamond);
-        story.appendChild(storyTitle);
+        story.appendChild(titleContainer);
         story.appendChild(storyContent);
         story.appendChild(readMore);
         
