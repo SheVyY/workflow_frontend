@@ -100,20 +100,88 @@ export async function fetchMultipleCategories() {
     },
     {
       id: 'sample-3',
-      category: 'Business Trends',
+      category: 'Global Industry Insights', 
       news_items: [
         {
           id: 'item-5',
-          title: 'Remote Work Evolution',
-          content: 'Companies adopt hybrid models as the new standard for workplace flexibility.',
-          source: 'Business Insider',
+          title: 'Renewable Energy Expansion',
+          content: 'Global investment in renewable energy reached record levels last quarter, with solar leading growth.',
+          source: 'Energy Monitor',
           source_url: '#'
         },
         {
           id: 'item-6',
-          title: 'Supply Chain Innovations',
+          title: 'Supply Chain Resilience',
           content: 'New logistics technologies help businesses overcome persistent supply chain challenges.',
           source: 'Supply Chain Review',
+          source_url: '#'
+        },
+        {
+          id: 'item-7',
+          title: 'Manufacturing Automation Trends',
+          content: 'Factory automation adoption accelerates as labor markets remain tight across developed economies.',
+          source: 'Manufacturing Weekly',
+          source_url: '#'
+        },
+        {
+          id: 'item-8',
+          title: 'Electric Vehicle Market Shifts',
+          content: 'Price competition intensifies in EV market as new entrants challenge established manufacturers.',
+          source: 'Auto Intelligence',
+          source_url: '#'
+        },
+        {
+          id: 'item-9',
+          title: 'Global Trade Agreement Impact',
+          content: 'Recent trade agreements between APAC nations expected to boost regional commerce by 15%.',
+          source: 'Trade Monitor',
+          source_url: '#'
+        },
+        {
+          id: 'item-10',
+          title: 'Pharmaceutical Innovation Pipeline',
+          content: 'Major pharma companies report promising results in late-stage clinical trials for breakthrough treatments.',
+          source: 'Health Industries',
+          source_url: '#'
+        }
+      ]
+    },
+    {
+      id: 'sample-4',
+      category: 'Market Analysis',
+      news_items: [
+        {
+          id: 'item-11',
+          title: 'Commodity Price Forecast',
+          content: 'Analysts predict stabilization in commodity markets following months of heightened volatility.',
+          source: 'Commodity Insight',
+          source_url: '#'
+        },
+        {
+          id: 'item-12',
+          title: 'Emerging Market Opportunities',
+          content: 'Institutional investors increasing allocations to select emerging markets despite global uncertainties.',
+          source: 'Global Markets',
+          source_url: '#'
+        }
+      ]
+    },
+    {
+      id: 'sample-5',
+      category: 'Startup Ecosystem',
+      news_items: [
+        {
+          id: 'item-13',
+          title: 'Venture Funding Trends',
+          content: 'Early-stage funding shows signs of recovery with focus on AI, climate tech, and healthcare startups.',
+          source: 'Venture Beat',
+          source_url: '#'
+        },
+        {
+          id: 'item-14',
+          title: 'Unicorn Valuations Adjust',
+          content: 'Later-stage startups adapt to new market realities with focus on profitability over growth.',
+          source: 'Startup Insider',
           source_url: '#'
         }
       ]

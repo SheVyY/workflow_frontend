@@ -750,6 +750,12 @@ select,
     border: none;
     box-shadow: none;
     overflow-x: hidden;
+    padding-bottom: 2rem; /* Add padding to bottom for better scrolling */
+}
+
+/* Always show scrollbar for better UX */
+.news-container.has-many-feeds {
+    overflow-y: scroll;
 }
 
 .news-item {
@@ -1102,13 +1108,13 @@ select,
 /* Three-dots dropdown menu */
 .news-menu-dropdown {
     position: absolute;
-    right: 10px;
-    top: 45px;
+    right: 8px;
+    top: 34px;
     background-color: #fff;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
     z-index: 100;
-    min-width: 120px;
+    min-width: 180px;
     padding: 8px 0;
     display: none;
 }
@@ -1124,7 +1130,7 @@ select,
 }
 
 .news-menu-dropdown li {
-    padding: 8px 16px;
+    padding: 10px 16px;
     font-size: 14px;
     color: #333;
     cursor: pointer;
@@ -1137,6 +1143,7 @@ select,
 
 .news-menu-dropdown li.delete {
     color: #d93025;
+    font-weight: 500;
 }
 
 /* Empty state styles */
@@ -1217,7 +1224,8 @@ select,
 
 /* Custom scrollbar styling */
 .news-container::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
+    height: 8px;
 }
 
 .news-container::-webkit-scrollbar-track {
@@ -1235,7 +1243,7 @@ select,
 }
 
 .output-container .news-container {
-    padding-bottom: 1.5rem;
+    padding-bottom: 2rem;
     width: 100%;
     max-width: 100%;
 }

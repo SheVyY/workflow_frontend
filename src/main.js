@@ -173,6 +173,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         groupedFeeds[category].push(feed);
                     });
                     
+                    // Apply scrollbar class if we have enough feeds
+                    if (feeds.length >= 3) {
+                        newsContainer.classList.add('has-many-feeds');
+                    } else {
+                        newsContainer.classList.remove('has-many-feeds');
+                    }
+                    
                     // Display each category of feeds
                     Object.keys(groupedFeeds).forEach(category => {
                         groupedFeeds[category].forEach(feed => {
@@ -210,17 +217,40 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to handle deleting a news feed
     async function handleDeleteFeed(feedId) {
         try {
-            const success = await deleteNewsFeed(feedId);
-            if (success) {
-                // Remove the feed from the UI
-                const newsItem = document.querySelector(`.news-item[data-feed-id="${feedId}"]`);
-                if (newsItem && newsItem.parentNode) {
-                    newsItem.parentNode.removeChild(newsItem);
-                    toggleEmptyState(emptyState, newsContainer);
-                }
+            console.log('Handling delete for feed ID:', feedId);
+            // Find the feed element before attempting to delete
+            const newsItem = document.querySelector(`.news-item[data-feed-id="${feedId}"]`);
+            
+            // Remove from UI immediately for responsive feel
+            if (newsItem && newsItem.parentNode) {
+                console.log('Removing feed from UI');
+                newsItem.parentNode.removeChild(newsItem);
             }
+            
+            // Check if this is a sample feed (IDs starting with 'sample-')
+            const isSampleFeed = feedId && feedId.toString().startsWith('sample-');
+            
+            if (!isSampleFeed) {
+                // Only delete from database if it's not a sample feed
+                const success = await deleteNewsFeed(feedId);
+                
+                if (success) {
+                    console.log('Successfully deleted feed from database');
+                    showToast('News feed deleted successfully', 'success');
+                } else {
+                    console.error('Database deletion failed but UI was updated');
+                    showToast('The feed was removed from view but there was an error deleting it from the database', 'error');
+                }
+            } else {
+                console.log('Skipping database deletion for sample feed:', feedId);
+                showToast('Sample feed removed', 'success');
+            }
+            
+            // Check if we need to show empty state
+            toggleEmptyState(emptyState, newsContainer);
         } catch (error) {
             console.error('Error deleting feed:', error);
+            showToast('Failed to delete the news feed. Please try again.', 'error');
         }
     }
 
@@ -389,10 +419,18 @@ document.addEventListener('DOMContentLoaded', () => {
         closeAllDropdowns();
     });
 
-    // Handle delete feed event
+    // Listen for delete feed events
     window.addEventListener('delete-feed', function(e) {
+        console.log('Delete feed event received:', e.detail);
         if (e.detail && e.detail.feedId) {
-            handleDeleteFeed(e.detail.feedId);
+            if (e.detail.isSample) {
+                console.log('Skipping handleDeleteFeed for sample data');
+                // Already removed from DOM in the component
+            } else {
+                handleDeleteFeed(e.detail.feedId);
+            }
+        } else {
+            console.error('Delete feed event missing feedId:', e.detail);
         }
     });
 
@@ -423,22 +461,44 @@ document.addEventListener('DOMContentLoaded', () => {
             newsContainer.innerHTML = '';
             
             if (categoryFeeds && categoryFeeds.length > 0) {
+                // Add class to container for better scrolling UI
+                newsContainer.classList.add('has-many-feeds');
+                
                 // Display each category feed
                 categoryFeeds.forEach(feed => {
                     const newsItems = formatNewsData(feed);
                     if (newsItems.length > 0) {
+                        // Make sure we mark these as sample data for proper handling
                         const newsItem = generateNewsItem(newsItems, true, feed.id, feed.category);
                         newsContainer.appendChild(newsItem);
                     }
                 });
+                
+                // Randomly select one feed to collapse for demonstration
+                const allFeeds = newsContainer.querySelectorAll('.news-item');
+                if (allFeeds.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * allFeeds.length);
+                    const randomFeed = allFeeds[randomIndex];
+                    const collapseBtn = randomFeed.querySelector('.collapse-btn');
+                    
+                    if (collapseBtn) {
+                        // Trigger a click on the collapse button to collapse it
+                        setTimeout(() => {
+                            collapseBtn.click();
+                        }, 100);
+                    }
+                }
                 
                 // Hide empty state
                 if (emptyState) {
                     emptyState.style.display = 'none';
                 }
                 
-                // Show news container
+                // Show news container and scrollbar
                 newsContainer.style.display = 'flex';
+                
+                // Show a toast indicating this is sample data
+                showToast('Showing sample news feeds. Scroll to see all feeds.', 'success');
             } else {
                 // No sample data available
                 showToast('No sample data available. Please try again later.', 'error');
@@ -470,8 +530,16 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Listen for delete feed events
         window.addEventListener('delete-feed', function(e) {
+            console.log('Delete feed event received:', e.detail);
             if (e.detail && e.detail.feedId) {
-                handleDeleteFeed(e.detail.feedId);
+                if (e.detail.isSample) {
+                    console.log('Skipping handleDeleteFeed for sample data');
+                    // Already removed from DOM in the component
+                } else {
+                    handleDeleteFeed(e.detail.feedId);
+                }
+            } else {
+                console.error('Delete feed event missing feedId:', e.detail);
             }
         });
         
