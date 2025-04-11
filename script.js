@@ -483,23 +483,34 @@ document.addEventListener('DOMContentLoaded', () => {
         element.classList.remove('loading');
     }
 
-    // Update form submission with loading states and submission tracking
-    startButton.addEventListener('click', async () => {
+    // Form submission handler
+    startButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+        console.log('Form submission started');
+
         // Prevent multiple submissions
         if (isSubmitting) {
+            console.log('Already submitting, preventing duplicate submission');
             return;
         }
 
-        const sources = Array.from(sourcesContainer.querySelectorAll('.tag'))
-            .map(tag => tag.textContent.trim().replace('×', '').trim())
-            .filter(source => source !== '');
+        // Get form values
+        const sources = Array.from(sourcesContainer.querySelectorAll('.tag')).map(tag => 
+            tag.querySelector('span').textContent.trim()
+        );
+        console.log('Sources:', sources);
 
-        const topics = Array.from(topicsContainer.querySelectorAll('.tag'))
-            .map(tag => tag.textContent.trim().replace('×', '').trim())
-            .filter(topic => topic !== '');
+        const topics = Array.from(document.querySelectorAll('.topic-checkbox input:checked')).map(checkbox => 
+            checkbox.value
+        );
+        console.log('Topics:', topics);
 
         const language = languageSelect.value;
+        console.log('Language:', language);
+
         const email = emailInput.value.trim();
+        console.log('Email:', email);
+
         let isValid = true;
 
         // Clear all existing errors first
@@ -531,8 +542,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (!isValid) {
+            console.log('Form validation failed');
             return;
         }
+
+        console.log('Form validation passed, preparing to submit');
 
         // Set submitting state
         isSubmitting = true;
@@ -545,24 +559,33 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingState(emailInput);
 
         try {
+            console.log('Sending request to webhook:', webhookUrl);
+            const requestBody = {
+                sources: sources.map(source => ({
+                    url: source.startsWith('http') ? source : `https://${source}`,
+                    method: "GET"
+                })),
+                topics,
+                language,
+                email,
+                date: getYesterdayUTC()
+            };
+            console.log('Request body:', requestBody);
+
             const response = await fetch(webhookUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    sources: sources.map(source => ({
-                        url: source.startsWith('http') ? source : `https://${source}`,
-                        method: "GET"
-                    })),
-                    topics,
-                    language,
-                    email,
-                    date: getYesterdayUTC()
-                })
+                body: JSON.stringify(requestBody)
             });
 
+            console.log('Response status:', response.status);
+            const responseData = await response.text();
+            console.log('Response data:', responseData);
+
             if (response.ok) {
+                console.log('Submission successful');
                 showToast('Your news summary has been set up successfully!', 'success');
                 // Reset form
                 sourcesContainer.querySelectorAll('.tag').forEach(tag => tag.remove());
@@ -575,9 +598,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 startButton.textContent = 'Submitted';
                 startButton.classList.add('submitted');
             } else {
-                throw new Error('Failed to set up news summary');
+                throw new Error(`Failed to set up news summary: ${response.status} ${responseData}`);
             }
         } catch (error) {
+            console.error('Submission error:', error);
             showToast('Something went wrong. Please try again.', 'error');
             // Reset submitting state on error so user can try again
             isSubmitting = false;
@@ -588,6 +612,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hideLoadingState(sourcesContainer);
             hideLoadingState(topicsContainer);
             hideLoadingState(emailInput);
+            console.log('Form submission completed');
         }
     });
 
