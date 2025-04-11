@@ -481,6 +481,23 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clear any existing content
             newsContainer.innerHTML = '';
             
+            // Always create sample controls container but hide it initially
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'sample-controls';
+            buttonContainer.style.display = 'none'; // Hidden by default
+            
+            // Add clear samples button
+            const clearSamplesBtn = document.createElement('button');
+            clearSamplesBtn.className = 'clear-samples-btn';
+            clearSamplesBtn.textContent = 'Clear All Samples';
+            clearSamplesBtn.addEventListener('click', function() {
+                clearAllSampleFeeds();
+            });
+            
+            // Add the button to the container
+            buttonContainer.appendChild(clearSamplesBtn);
+            newsContainer.appendChild(buttonContainer);
+            
             if (categoryFeeds && categoryFeeds.length > 0) {
                 // Add class to container for better scrolling UI
                 newsContainer.classList.add('has-many-feeds');
@@ -510,6 +527,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         }, 100);
                     }
                 }
+                
+                // Check if we have sample feeds and show controls if needed
+                updateSampleControlsVisibility();
                 
                 // Hide empty state
                 if (emptyState) {
@@ -544,9 +564,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newsItems = formatNewsData(fallbackFeed);
                 const newsItem = generateNewsItem(newsItems, true, fallbackFeed.id, fallbackFeed.category);
                 
-                // Clear any existing content
-                newsContainer.innerHTML = '';
+                // Add the fallback item to the container
                 newsContainer.appendChild(newsItem);
+                
+                // Check if we have sample feeds and show controls if needed
+                updateSampleControlsVisibility();
                 
                 // Hide empty state and show news container
                 if (emptyState) {
@@ -564,6 +586,65 @@ document.addEventListener('DOMContentLoaded', () => {
             emptyPreviewButton.textContent = 'Show Preview';
         }
     });
+
+    // Function to check if there are sample feeds on the page
+    function hasSampleFeeds() {
+        // Look for any news items with sample data
+        const sampleItems = document.querySelectorAll('.news-item[data-is-sample="true"]');
+        return sampleItems.length > 0;
+    }
+
+    // Function to update sample controls visibility
+    function updateSampleControlsVisibility() {
+        const sampleControls = document.querySelector('.sample-controls');
+        
+        if (sampleControls) {
+            if (hasSampleFeeds()) {
+                sampleControls.style.display = 'flex';
+            } else {
+                sampleControls.style.display = 'none';
+            }
+        }
+    }
+
+    // Function to clear all sample feeds
+    function clearAllSampleFeeds() {
+        // Find all sample news items
+        const sampleItems = document.querySelectorAll('.news-item[data-is-sample="true"]');
+        let count = 0;
+        
+        // Remove each sample item
+        sampleItems.forEach(item => {
+            if (item.parentNode) {
+                item.parentNode.removeChild(item);
+                count++;
+            }
+        });
+        
+        // Clear the sample controls from the DOM
+        const sampleControls = document.querySelector('.sample-controls');
+        if (sampleControls && sampleControls.parentNode) {
+            sampleControls.parentNode.removeChild(sampleControls);
+        }
+        
+        // Explicitly show the empty state
+        if (count > 0) {
+            // Reset displays to show empty state properly
+            if (newsContainer) {
+                newsContainer.innerHTML = '';
+                newsContainer.style.display = 'none';
+            }
+            
+            if (emptyState) {
+                emptyState.style.display = 'flex';
+            }
+            
+            // Show success message
+            showToast(`Cleared ${count} sample feeds`, 'success');
+        } else {
+            showToast('No sample feeds to clear', 'info');
+        }
+    }
 
     // Initialize the app
     function init() {

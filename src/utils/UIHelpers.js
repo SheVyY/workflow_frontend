@@ -177,15 +177,24 @@ export function debounce(func, wait) {
  * Toggle empty state visibility based on content presence
  * @param {HTMLElement} emptyState - Empty state container
  * @param {HTMLElement} newsContainer - News container
+ * @param {boolean} forceEmpty - Force showing empty state
  */
-export function toggleEmptyState(emptyState, newsContainer) {
-    const hasNewsItems = newsContainer.children.length > 0;
+export function toggleEmptyState(emptyState, newsContainer, forceEmpty = false) {
+    // Check for real news items (exclude the sample-controls container)
+    const newsItems = newsContainer.querySelectorAll('.news-item');
+    const hasNewsItems = newsItems.length > 0;
     
-    if (hasNewsItems) {
-        emptyState.style.display = 'none';
-        newsContainer.style.display = 'block';
+    if (hasNewsItems && !forceEmpty) {
+        // Has news items, hide empty state
+        if (emptyState) {
+            emptyState.style.display = 'none';
+        }
+        newsContainer.style.display = 'flex';
     } else {
-        emptyState.style.display = 'flex';
+        // No news items, show empty state
+        if (emptyState) {
+            emptyState.style.display = 'flex';
+        }
         newsContainer.style.display = 'none';
     }
 }
