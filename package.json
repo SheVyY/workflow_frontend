@@ -13,10 +13,12 @@
     "setup-db": "node scripts/setupDb.js",
     "test-connection": "node scripts/testConnection.js",
     "check-db": "node scripts/checkSupabaseProject.js",
-    "generate-test-data": "node scripts/generate-test-data.js",
+    "generate-prod-data": "node scripts/generate-prod-data.js",
+    "generate-dev-data": "node scripts/generate-dev-data.js",
     "add-category-column": "node scripts/add-category-column.js",
     "setup-dev-db": "node scripts/createDevTables.js",
-    "generate-dev-data": "node scripts/generate-dev-data.js"
+    "setup-sample-data": "node scripts/create-sample-tables.js",
+    "check-dev-data": "node scripts/check-dev-data.js"
   },
   "keywords": [
     "news",

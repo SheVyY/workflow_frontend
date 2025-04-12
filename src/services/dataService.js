@@ -9,6 +9,14 @@ import * as formSupabaseService from './formService.js';
 console.log('Initializing Supabase data service');
 
 /**
+ * Test database connection and tables
+ * @returns {Promise<Object>} - Results of database tests
+ */
+export async function testDatabaseConnection() {
+  return supabaseService.testDatabaseConnection();
+}
+
+/**
  * Fetch all news feeds
  * @returns {Promise<Array>} - Array of news feeds
  */
@@ -17,7 +25,24 @@ export async function fetchNewsFeeds() {
 }
 
 /**
- * Delete a news feed and all its items
+ * Fetch all development feeds regardless of submission ID
+ * @returns {Promise<Array>} - Array of all feeds in development table
+ */
+export async function fetchAllDevFeeds() {
+  return supabaseService.fetchAllDevFeeds();
+}
+
+/**
+ * Fetch latest 10 news feeds regardless of submission ID
+ * @param {number} limit - Maximum number of feeds to fetch
+ * @returns {Promise<Array>} - Array of latest feeds from the database
+ */
+export async function fetchLatestFeeds(limit = 10) {
+  return supabaseService.fetchLatestFeeds(limit);
+}
+
+/**
+ * Delete a news feed
  * @param {string} feedId - The feed ID to delete
  * @returns {Promise<boolean>} - Success status
  */

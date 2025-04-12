@@ -81,6 +81,24 @@ For more details, see [DEVELOPMENT.md](DEVELOPMENT.md).
 - `npm run setup-dev-db` - Set up the development database tables
 - `npm run generate-test-data` - Generate test data for production
 - `npm run generate-dev-data` - Generate test data for development
+- `npm run setup-sample-data` - Create and populate sample data tables for preview functionality
+
+## Sample Data for Preview
+
+The application includes a "Show Preview" feature that demonstrates how news feeds will look without requiring actual data in the database.
+
+To set up the sample data tables in your Supabase database:
+
+1. Run the sample data setup script:
+   ```
+   npm run setup-sample-data
+   ```
+
+2. This will create two tables:
+   - `sample_news_feeds`: Contains sample feed records
+   - `sample_news_items`: Contains sample news items with various categories
+
+3. The preview functionality will automatically use this sample data when a user clicks "Show Preview".
 
 ## License
 

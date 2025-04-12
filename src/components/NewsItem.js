@@ -106,7 +106,9 @@ export function closeAllDropdowns() {
 }
 
 // Function to generate news item with dynamic data
-export function generateNewsItem(newsData, isSampleData = true, feedId = null, category = 'News Summary', customDate = null) {
+export function generateNewsItem(newsData, isSampleData = true, feedId = null, category = 'News Summary', customDate = null, feedTitle = 'News Summary') {
+    console.log('DEBUG: NewsItem component - Received props:', JSON.stringify({ newsData, isSampleData, feedId, category, customDate, feedTitle }));
+    
     // Create news item container
     const newsItem = document.createElement('div');
     newsItem.className = 'news-item';
@@ -149,7 +151,7 @@ export function generateNewsItem(newsData, isSampleData = true, feedId = null, c
     titleDiv.className = 'news-title';
     
     const title = document.createElement('h2');
-    title.textContent = category;
+    title.textContent = feedTitle;
     
     // Create article count badge
     const articleCount = document.createElement('div');
@@ -326,6 +328,13 @@ export function generateNewsItem(newsData, isSampleData = true, feedId = null, c
     // Assemble news item
     newsItem.appendChild(header);
     newsItem.appendChild(content);
+    
+    console.log('DEBUG: NewsItem component - Created with elements:', {
+        hasTitle: !!title.textContent,
+        hasSource: !!newsData.some(item => item.source),
+        hasCategory: !!category,
+        hasContent: !!newsData.some(item => item.content)
+    });
     
     return newsItem;
 } 

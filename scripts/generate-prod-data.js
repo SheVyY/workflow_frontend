@@ -1,7 +1,8 @@
 /**
- * Test Data Generator
- * This script will generate fake news feeds and insert them into Supabase
- * to test the real data functionality of the news feed application.
+ * Production Data Generator
+ * This script will generate fake news feeds and insert them into the production
+ * tables (news_feeds, news_items) in Supabase to test the real data functionality
+ * of the news feed application.
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -229,7 +230,7 @@ function generateNewsFeed(submissionId, category = null) {
   return {
     submission_id: submissionId,
     category: feedCategory,
-    title: `${feedCategory} Summary`,
+    title: 'News Summary',
     date: new Date().toISOString(),
     news_items: newsItems
   };
@@ -264,7 +265,7 @@ async function insertTestData() {
           .from('news_feeds')
           .insert({
             submission_id: feed.submission_id,
-            title: feed.title,
+            title: 'News Summary',
             date: feed.date
           })
           .select('id');
@@ -274,7 +275,7 @@ async function insertTestData() {
           continue;
         }
         
-        console.log(`✅ Inserted feed ${i+1} (${feed.category})`);
+        console.log(`✅ Inserted feed ${i+1} for category '${feed.category}'`);
         
         // Get the feed ID
         const feedId = feedData[0].id;

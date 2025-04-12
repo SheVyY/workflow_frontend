@@ -228,7 +228,7 @@ function generateNewsFeed(submissionId, category = null) {
   return {
     submission_id: submissionId,
     category: feedCategory,
-    title: `${feedCategory} Summary`,
+    title: 'News Summary',
     date: new Date().toISOString(),
     news_items: newsItems
   };
@@ -325,8 +325,7 @@ async function insertDevTestData() {
             .from('dev_news_feeds')
             .insert({
               submission_id: feed.submission_id,
-              title: feed.title,
-              category: feed.category,
+              title: 'News Summary',
               date: feed.date
             })
             .select('id');
@@ -336,7 +335,7 @@ async function insertDevTestData() {
             continue;
           }
           
-          console.log(`✅ Inserted feed ${i+1} (${feed.category})`);
+          console.log(`✅ Inserted feed ${i+1} for category '${feed.category}'`);
           insertedFeeds++;
           
           // Get the feed ID
@@ -373,7 +372,8 @@ async function insertDevTestData() {
           console.log(`To view the feeds, use submission ID: ${feedSubmissionId}`);
           console.log('\nYou can now open your development application and see the test feeds.');
           console.log(`\nOpen this link to automatically load the test data:`);
-          console.log(`http://localhost:5173/?id=${feedSubmissionId}&env=dev`);
+          console.log(`http://localhost:3000/?id=${feedSubmissionId}`);
+          console.log(`\nOr simply open http://localhost:3000/ to see all feeds.`)
         } else {
           console.log('\n❌ Failed to insert any feeds. Please check the errors above.');
         }
