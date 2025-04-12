@@ -20,14 +20,12 @@ function getTableName(baseTable) {
   const tableName = useDevTable ? `dev_${baseTable}` : baseTable;
   
   // Log table selection (only in development for debugging)
-  if (isLocalhost) {
-    console.log(`Table selection: ${baseTable} → ${tableName}`, {
-      isLocalhost,
-      hostname: window.location.hostname,
-      envParam: env,
-      useDevTable
-    });
-  }
+  console.log(`DEBUG: getTableName: ${baseTable} → ${tableName}`, {
+    isLocalhost,
+    hostname: window.location.hostname,
+    envParam: env,
+    useDevTable
+  });
   
   return tableName;
 }
@@ -103,15 +101,29 @@ export async function deleteNewsFeed(feedId) {
 export function subscribeToNewsFeeds(onInsert, onDelete) {
   const tableName = getTableName('news_feeds');
   
+  console.log(`Setting up Realtime subscription for table: ${tableName}`);
+  
   const subscription = supabase
     .channel(`public:${tableName}`)
-    .on('INSERT', payload => {
+    .on('postgres_changes', { 
+      event: 'INSERT', 
+      schema: 'public', 
+      table: tableName 
+    }, (payload) => {
+      console.log('Realtime: New feed inserted', payload.new);
       onInsert(payload.new);
     })
-    .on('DELETE', payload => {
+    .on('postgres_changes', { 
+      event: 'DELETE', 
+      schema: 'public', 
+      table: tableName 
+    }, (payload) => {
+      console.log('Realtime: Feed deleted', payload.old);
       onDelete(payload.old);
     })
-    .subscribe();
+    .subscribe((status) => {
+      console.log(`Realtime subscription status: ${status}`);
+    });
   
   return subscription;
 }
@@ -297,6 +309,21 @@ export async function fetchAllDevFeeds() {
     }
     
     console.log('DEBUG: fetchAllDevFeeds - Fetching all development feeds');
+    
+    // First check if the table exists by running a simpler query
+    const { data: checkData, error: checkError } = await supabase
+      .from('dev_news_feeds')
+      .select('id')
+      .limit(1);
+      
+    if (checkError) {
+      console.error('DEBUG: fetchAllDevFeeds - Error checking dev_news_feeds table existence:', checkError);
+      return [];
+    }
+    
+    console.log('DEBUG: fetchAllDevFeeds - dev_news_feeds table exists and is accessible');
+    
+    // Now run the full query
     const { data, error } = await supabase
       .from('dev_news_feeds')
       .select(`
@@ -320,7 +347,8 @@ export async function fetchAllDevFeeds() {
       return [];
     }
     
-    console.log('DEBUG: fetchAllDevFeeds - Raw data received:', data?.length || 0, 'feeds');
+    console.log('DEBUG: fetchAllDevFeeds - Raw data received:', data);
+    console.log('DEBUG: fetchAllDevFeeds - Number of feeds:', data?.length || 0);
     
     if (!data || data.length === 0) {
       console.log('DEBUG: fetchAllDevFeeds - No dev feeds found in database');
@@ -329,7 +357,9 @@ export async function fetchAllDevFeeds() {
     
     // Format the data properly
     const formattedData = data.map(feed => {
-      console.log(`DEBUG: fetchAllDevFeeds - Processing feed ${feed.id}, has ${feed.dev_news_items?.length || 0} items`);
+      console.log(`DEBUG: fetchAllDevFeeds - Processing feed ${feed.id}, keys:`, Object.keys(feed));
+      console.log(`DEBUG: fetchAllDevFeeds - Feed ${feed.id} dev_news_items:`, feed.dev_news_items);
+      
       return {
         ...feed,
         news_items: feed.dev_news_items || []
@@ -337,6 +367,8 @@ export async function fetchAllDevFeeds() {
     });
     
     console.log('DEBUG: fetchAllDevFeeds - Returning formatted data with', formattedData.length, 'feeds');
+    console.log('DEBUG: First formatted feed:', formattedData.length > 0 ? formattedData[0] : 'No feeds');
+    
     return formattedData || [];
   } catch (error) {
     console.error('Error fetching all development feeds:', error);
@@ -357,6 +389,21 @@ export async function fetchLatestFeeds(limit = 10) {
     
     console.log('DEBUG: fetchLatestFeeds - Using tables:', { feedsTable: tableName, itemsTable: itemsTableName });
     
+    // First check if the table exists
+    console.log(`DEBUG: fetchLatestFeeds - Checking if ${tableName} exists`);
+    const { data: checkData, error: checkError } = await supabase
+      .from(tableName)
+      .select('id')
+      .limit(1);
+      
+    if (checkError) {
+      console.error(`DEBUG: fetchLatestFeeds - Error checking ${tableName} existence:`, checkError);
+      return [];
+    }
+    
+    console.log(`DEBUG: fetchLatestFeeds - ${tableName} exists and is accessible`);
+    
+    // Now run the full query
     const { data, error } = await supabase
       .from(tableName)
       .select(`
@@ -381,7 +428,8 @@ export async function fetchLatestFeeds(limit = 10) {
       return [];
     }
     
-    console.log('DEBUG: fetchLatestFeeds - Raw data received:', JSON.stringify(data, null, 2));
+    console.log('DEBUG: fetchLatestFeeds - Raw data structure:', data ? Object.keys(data[0] || {}) : 'No data');
+    console.log('DEBUG: fetchLatestFeeds - Raw data first item:', data ? data[0] : 'No data');
     console.log('DEBUG: fetchLatestFeeds - Number of feeds received:', data?.length || 0);
     
     if (!data || data.length === 0) {
@@ -392,18 +440,24 @@ export async function fetchLatestFeeds(limit = 10) {
     // Format the data properly
     const formattedData = data.map(feed => {
       // Log each feed's items count for debugging
-      console.log(`DEBUG: fetchLatestFeeds - Feed ${feed.id} has ${feed[itemsTableName]?.length || 0} news items`);
+      console.log(`DEBUG: fetchLatestFeeds - Feed ${feed.id} keys:`, Object.keys(feed));
+      
+      // Check for existence of the items table key
+      if (!feed[itemsTableName]) {
+        console.warn(`DEBUG: fetchLatestFeeds - Feed ${feed.id} has no ${itemsTableName} property`);
+      }
+      
       return {
         ...feed,
         news_items: feed[itemsTableName] || []
       };
     });
     
-    console.log('DEBUG: fetchLatestFeeds - Returning formatted data:', JSON.stringify(formattedData.map(f => ({
-      id: f.id,
-      title: f.title,
-      news_items_count: f.news_items.length
-    })), null, 2));
+    console.log('DEBUG: fetchLatestFeeds - First formatted feed:', formattedData.length > 0 ? {
+      id: formattedData[0].id,
+      title: formattedData[0].title,
+      news_items_count: formattedData[0].news_items.length
+    } : 'No feeds');
     
     return formattedData || [];
   } catch (error) {

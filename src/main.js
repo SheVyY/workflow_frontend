@@ -8,7 +8,10 @@ import {
     fetchMultipleCategories,
     generateSubmissionId, 
     saveFormSubmission, 
-    getFeedsBySubmissionId 
+    getFeedsBySubmissionId,
+    fetchAllDevFeeds,
+    fetchLatestFeeds,
+    testDatabaseConnection
 } from './services/dataService.js';
 
 import { sendFormDataToWebhook } from './services/webhookService.js';
@@ -22,7 +25,40 @@ import './styles/styles.css';
 /**
  * Main application initialization
  */
+
+// Check if we're in development mode
+const isDevelopmentMode = 
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1';
+
+console.log('=== APP INITIALIZATION ===');
+console.log('Development mode:', isDevelopmentMode);
+console.log('Current URL:', window.location.href);
+console.log('Hostname:', window.location.hostname);
+console.log('=========================');
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Debug environment information
+    console.log('======= ENVIRONMENT DEBUG INFO =======');
+    console.log('Vite Environment Variables:');
+    console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
+    console.log('VITE_SUPABASE_ANON_KEY exists:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
+    console.log('Current URL:', window.location.href);
+    console.log('Environment Parameter:', new URLSearchParams(window.location.search).get('env'));
+    console.log('ID Parameter:', new URLSearchParams(window.location.search).get('id'));
+    console.log('======================================');
+    
+    // Test database connection on page load
+    (async function() {
+        console.log('Testing database connection...');
+        try {
+            const result = await testDatabaseConnection();
+            console.log('Database connection test result:', result);
+        } catch (err) {
+            console.error('Error testing database connection:', err);
+        }
+    })();
+    
     const sourceInput = document.getElementById('source-input');
     const emailInput = document.getElementById('email-input');
     const sourcesContainer = document.getElementById('sources-container');
@@ -39,17 +75,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Track active subscriptions
     let activeSubscription = null;
     
-    // Track current submission ID - get from URL param first, then localStorage
+    // Track current submission ID - get from URL param only, no localStorage
     const urlParams = new URLSearchParams(window.location.search);
-    let currentSubmissionId = urlParams.get('id') || localStorage.getItem('submissionId') || null;
-    
-    // Check if we're in development mode
-    const isDevelopmentMode = urlParams.get('env') === 'dev';
-    
-    // Store the submission ID in localStorage if it came from URL
-    if (urlParams.get('id')) {
-        localStorage.setItem('submissionId', urlParams.get('id'));
-    }
+    let currentSubmissionId = urlParams.get('id') || null;
+
+    console.log('DEBUG - URL Parameters:', {
+        id: urlParams.get('id'),
+        env: urlParams.get('env'),
+        allParams: Object.fromEntries(urlParams.entries()),
+        currentSubmissionId,
+        isDevelopmentMode
+    });
     
     // Show dev mode banner if needed
     if (isDevelopmentMode) {
@@ -172,102 +208,232 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Function to format news data from Supabase into the format needed for display
-    function formatNewsData(feedData) {
-        if (!feedData || !feedData.news_items || !feedData.news_items.length) {
+    // Function to format news data structure
+    function formatNewsData(feed) {
+        console.log('DEBUG: formatNewsData - Processing feed:', {
+            id: feed.id,
+            title: feed.title,
+            hasNewsItems: Array.isArray(feed.news_items),
+            newsItemsCount: Array.isArray(feed.news_items) ? feed.news_items.length : 0
+        });
+        
+        // Ensure news_items is an array
+        const newsItems = Array.isArray(feed.news_items) ? feed.news_items : [];
+        
+        if (newsItems.length === 0) {
+            console.log('DEBUG: formatNewsData - No news items found in feed');
             return [];
         }
         
-        return feedData.news_items.map(item => ({
-            title: item.title,
-            content: item.content,
-            url: item.source_url || '#',
-            source: item.source
-        }));
+        // Format each news item with consistent property names
+        const formattedItems = newsItems.map(item => {
+            return {
+                title: item.title || 'No Title',
+                content: item.content || 'No content available',
+                source: item.source || 'Unknown Source',
+                // Fix for source_url handling - avoid duplicate keys
+                url: item.source_url || '#',
+                sourceUrl: item.source_url || '#',
+                category: item.category || 'Uncategorized'
+            };
+        });
+        
+        console.log(`DEBUG: formatNewsData - Formatted ${formattedItems.length} news items`);
+        return formattedItems;
     }
 
-    // Function to load and display news feeds for the current submission
+    // Function to load and display news feeds
     async function loadNewsFeeds() {
         try {
-            // Show loading state
-            toggleEmptyState(emptyState, newsContainer);
+            console.log('DEBUG: loadNewsFeeds - Starting feed loading process');
             
-            // If we have a submission ID, fetch feeds for it
+            // Show loading state
+            toggleEmptyState(emptyState, newsContainer, true);
+            
+            // Clear any existing sample data before loading real data
+            clearAllSampleFeeds();
+            
+            // If we have a URL parameter with a specific ID, fetch those feeds
             if (currentSubmissionId) {
+                console.log(`DEBUG: loadNewsFeeds - Fetching feeds for submission ID: ${currentSubmissionId}`);
                 const feeds = await getFeedsBySubmissionId(currentSubmissionId);
                 
+                console.log(`DEBUG: loadNewsFeeds - Feeds for submission ${currentSubmissionId} received: ${feeds?.length || 0}`);
+                
                 if (feeds && feeds.length > 0) {
-                    // Clear the container first
-                    newsContainer.innerHTML = '';
-                    
-                    // Sort all feeds by date (newest first) before grouping
-                    feeds.sort((a, b) => {
-                        const dateA = new Date(a.date || 0);
-                        const dateB = new Date(b.date || 0);
-                        return dateB - dateA; // Descending order (newest first)
-                    });
-                    
-                    // Group feeds by category after sorting
-                    const groupedFeeds = {};
-                    
-                    feeds.forEach(feed => {
-                        const category = feed.category || 'News Summary';
-                        if (!groupedFeeds[category]) {
-                            groupedFeeds[category] = [];
-                        }
-                        groupedFeeds[category].push(feed);
-                    });
-                    
-                    // Apply scrollbar class if we have enough feeds
-                    if (feeds.length >= 3) {
-                        newsContainer.classList.add('has-many-feeds');
-                    } else {
-                        newsContainer.classList.remove('has-many-feeds');
-                    }
-                    
-                    // Get all categories sorted by the newest feed in each category
-                    const sortedCategories = Object.keys(groupedFeeds).sort((catA, catB) => {
-                        const latestFeedA = groupedFeeds[catA][0];
-                        const latestFeedB = groupedFeeds[catB][0];
-                        
-                        const dateA = latestFeedA ? new Date(latestFeedA.date || 0) : new Date(0);
-                        const dateB = latestFeedB ? new Date(latestFeedB.date || 0) : new Date(0);
-                        
-                        return dateB - dateA; // Newest first
-                    });
-                    
-                    // Display each category's feeds
-                    sortedCategories.forEach(category => {
-                        // Add each feed to the container (already sorted within category)
-                        groupedFeeds[category].forEach(feed => {
-                            const newsItems = formatNewsData(feed);
-                            if (newsItems.length > 0) {
-                                // Pass the feed ID and category to the generate function
-                                const newsItem = generateNewsItem(newsItems, false, feed.id, category);
-                                newsContainer.appendChild(newsItem);
-                            }
-                        });
-                    });
-                    
-                    // Update the UI
-                    updateOutputView();
+                    console.log(`DEBUG: loadNewsFeeds - Processing ${feeds.length} feeds for submission ${currentSubmissionId}`);
+                    processAndDisplayFeeds(feeds);
+                    return;
                 } else {
                     // No feeds found for this submission ID
-                    if (emptyState) {
-                        const message = document.querySelector('.empty-state-message');
-                        if (message) {
-                            message.textContent = 'Your news feed is being prepared. Check back soon for updates or click "Show Preview" to see an example.';
-                        }
-                    }
-                    toggleEmptyState(emptyState, newsContainer);
+                    console.log(`DEBUG: loadNewsFeeds - No feeds found for submission ${currentSubmissionId}`);
+                    updateEmptyStateMessage('Your news feed is being prepared. Check back soon for updates or click "Show Preview" to see an example.');
+                    toggleEmptyState(emptyState, newsContainer, true);
+                    return;
+                }
+            }
+            
+            // No specific ID requested, fetch the latest feeds based on environment
+            if (isDevelopmentMode) {
+                // In development mode, fetch from dev tables
+                console.log('DEBUG: loadNewsFeeds - Development mode: loading all development feeds');
+                const feeds = await fetchAllDevFeeds();
+                
+                console.log(`DEBUG: loadNewsFeeds - Dev feeds received: ${feeds?.length || 0}`);
+                
+                if (feeds && feeds.length > 0) {
+                    console.log(`DEBUG: loadNewsFeeds - Processing ${feeds.length} development feeds`);
+                    processAndDisplayFeeds(feeds);
+                    return;
+                } else {
+                    console.log('DEBUG: loadNewsFeeds - No development feeds found');
+                    updateEmptyStateMessage('No development feeds found. Run "npm run generate-dev-data" to create test data.');
+                    toggleEmptyState(emptyState, newsContainer, true);
+                    return;
                 }
             } else {
-                // No submission ID, show empty state
-                toggleEmptyState(emptyState, newsContainer);
+                // In production mode, fetch the latest feeds
+                console.log('DEBUG: loadNewsFeeds - Production mode: loading latest feeds');
+                const latestFeeds = await fetchLatestFeeds(10);
+                
+                console.log(`DEBUG: loadNewsFeeds - Latest feeds received: ${latestFeeds?.length || 0}`);
+                
+                if (latestFeeds && latestFeeds.length > 0) {
+                    console.log(`DEBUG: loadNewsFeeds - Processing ${latestFeeds.length} latest feeds`);
+                    processAndDisplayFeeds(latestFeeds);
+                    return;
+                } else {
+                    // No latest feeds found, show empty state
+                    console.log('DEBUG: loadNewsFeeds - No latest feeds found, showing empty state');
+                    updateEmptyStateMessage('No news feeds available at the moment. Please check back later or click "Show Preview" to see an example.');
+                    toggleEmptyState(emptyState, newsContainer, true);
+                    return;
+                }
             }
         } catch (error) {
-            console.error('Error loading news feeds:', error);
-            toggleEmptyState(emptyState, newsContainer);
+            console.error('DEBUG: loadNewsFeeds - Error loading news feeds:', error);
+            updateEmptyStateMessage('Error loading news feeds. Please try again later or click "Show Preview" to see an example.');
+            toggleEmptyState(emptyState, newsContainer, true);
+        }
+    }
+
+    // Function to process and display feeds in the UI
+    function processAndDisplayFeeds(feeds) {
+        console.log('DEBUG: processAndDisplayFeeds - Starting to process feeds');
+        
+        // If we have real feeds (not sample data), clear any sample data first
+        if (feeds && feeds.length > 0 && !feeds[0].id.toString().startsWith('sample-')) {
+            clearAllSampleFeeds();
+            
+            // Disable preview button when we have real data
+            if (emptyPreviewButton) {
+                emptyPreviewButton.disabled = true;
+                emptyPreviewButton.classList.add('disabled');
+            }
+        }
+        
+        // Clear the container first
+        newsContainer.innerHTML = '';
+        
+        console.log(`DEBUG: processAndDisplayFeeds - Container cleared, processing ${feeds.length} feeds`);
+        
+        // Sort all feeds by date (newest first) before grouping
+        feeds.sort((a, b) => {
+            const dateA = new Date(a.date || 0);
+            const dateB = new Date(b.date || 0);
+            return dateB - dateA; // Descending order (newest first)
+        });
+        
+        // Group feeds by their primary category (derived from news items)
+        const groupedFeeds = {};
+        
+        feeds.forEach(feed => {
+            // Process items to determine the primary category for this feed
+            const newsItems = Array.isArray(feed.news_items) ? feed.news_items : [];
+            
+            // Default category if no items or no categories
+            let primaryCategory = 'News Summary';
+            
+            // Get categories from items
+            if (newsItems.length > 0) {
+                // Count category occurrences
+                const categoryCounts = {};
+                newsItems.forEach(item => {
+                    if (item.category) {
+                        categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
+                    }
+                });
+                
+                // Find the most frequent category
+                let maxCount = 0;
+                for (const [category, count] of Object.entries(categoryCounts)) {
+                    if (count > maxCount) {
+                        maxCount = count;
+                        primaryCategory = category;
+                    }
+                }
+            }
+            
+            // Add to the appropriate category group
+            if (!groupedFeeds[primaryCategory]) {
+                groupedFeeds[primaryCategory] = [];
+            }
+            groupedFeeds[primaryCategory].push(feed);
+        });
+        
+        console.log('DEBUG: processAndDisplayFeeds - Feeds grouped by category:', Object.keys(groupedFeeds));
+        
+        // Apply scrollbar class if we have enough feeds
+        if (feeds.length >= 3) {
+            newsContainer.classList.add('has-many-feeds');
+        } else {
+            newsContainer.classList.remove('has-many-feeds');
+        }
+        
+        // Get all categories sorted by the newest feed in each category
+        const sortedCategories = Object.keys(groupedFeeds).sort((catA, catB) => {
+            const latestFeedA = groupedFeeds[catA][0];
+            const latestFeedB = groupedFeeds[catB][0];
+            
+            const dateA = latestFeedA ? new Date(latestFeedA.date || 0) : new Date(0);
+            const dateB = latestFeedB ? new Date(latestFeedB.date || 0) : new Date(0);
+            
+            return dateB - dateA; // Newest first
+        });
+        
+        console.log('DEBUG: processAndDisplayFeeds - Sorted categories:', sortedCategories);
+        
+        // Display each category's feeds
+        let totalNewsItemsDisplayed = 0;
+        
+        sortedCategories.forEach(category => {
+            // Add each feed to the container (already sorted within category)
+            groupedFeeds[category].forEach(feed => {
+                const newsItems = formatNewsData(feed);
+                console.log(`DEBUG: processAndDisplayFeeds - Feed ${feed.id} has ${newsItems.length} formatted items`);
+                
+                if (newsItems.length > 0) {
+                    // Pass the feed ID and category to the generate function
+                    const newsItem = generateNewsItem(newsItems, false, feed.id, category, null, feed.title);
+                    newsContainer.appendChild(newsItem);
+                    totalNewsItemsDisplayed++;
+                }
+            });
+        });
+        
+        console.log(`DEBUG: processAndDisplayFeeds - Total news items displayed: ${totalNewsItemsDisplayed}`);
+        
+        // Update the UI
+        updateOutputView();
+        
+        // Ensure empty state is hidden since we have content
+        if (totalNewsItemsDisplayed > 0) {
+            console.log('DEBUG: processAndDisplayFeeds - News items displayed, hiding empty state');
+            toggleEmptyState(emptyState, newsContainer, false);
+        } else {
+            console.log('DEBUG: processAndDisplayFeeds - No news items displayed, showing empty state');
+            updateEmptyStateMessage('No news items available to display.');
+            toggleEmptyState(emptyState, newsContainer, true);
         }
     }
 
@@ -311,6 +477,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Function to show loading animation in the news container
+    function showLoadingPlaceholder() {
+        // Clear any existing content
+        newsContainer.innerHTML = '';
+        
+        // Create loading placeholder
+        const loadingPlaceholder = document.createElement('div');
+        loadingPlaceholder.className = 'loading-placeholder';
+        
+        // Add animation and message
+        loadingPlaceholder.innerHTML = `
+            <div class="loading-animation">
+                <div class="loading-circle"></div>
+                <div class="loading-circle"></div>
+                <div class="loading-circle"></div>
+            </div>
+            <h3>Preparing Your Feeds</h3>
+            <p>We're setting up your personalized news feeds. This may take a few minutes.</p>
+        `;
+        
+        // Add to news container
+        newsContainer.appendChild(loadingPlaceholder);
+        
+        // Show news container and hide empty state
+        if (emptyState) {
+            emptyState.style.display = 'none';
+        }
+        newsContainer.style.display = 'flex';
+    }
+
     // Function to process form submission
     async function processFormSubmission() {
         // Collect form data
@@ -334,9 +530,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // Generate a new submission ID
             const submissionId = generateSubmissionId();
             
-            // Save current submission ID to localStorage
-            localStorage.setItem('submissionId', submissionId);
+            // Update the URL with the submission ID instead of using localStorage
             currentSubmissionId = submissionId;
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('id', submissionId);
+            window.history.pushState({}, '', newUrl);
+            
+            // Disable preview button while waiting for real data
+            if (emptyPreviewButton) {
+                emptyPreviewButton.disabled = true;
+                emptyPreviewButton.classList.add('disabled');
+            }
+            
+            // Show loading placeholder while waiting for feeds
+            showLoadingPlaceholder();
             
             // 1. Save form submission to Supabase
             const submission = await saveFormSubmission(formData, submissionId);
@@ -374,15 +581,29 @@ document.addEventListener('DOMContentLoaded', () => {
             activeSubscription.unsubscribe();
         }
         
-        // Subscribe to feed changes
+        console.log('DEBUG: setupRealTimeSubscription - Setting up Realtime subscription');
+        
+        // Always reload feeds when changes occur, regardless of environment
         activeSubscription = subscribeToNewsFeeds(
             // Handle new feed insertion
             (newFeed) => {
-                // Reload the feeds to show the latest
-                loadNewsFeeds();
+                console.log('DEBUG: Realtime - New feed inserted:', newFeed);
+                
+                // If we have a specific ID in the URL, only reload if it matches
+                if (currentSubmissionId) {
+                    if (newFeed.submission_id === currentSubmissionId) {
+                        console.log('DEBUG: Realtime - Reloading feeds for matching submission ID');
+                        loadNewsFeeds();
+                    }
+                } else {
+                    // No specific ID, always reload feeds
+                    console.log('DEBUG: Realtime - Reloading all feeds');
+                    loadNewsFeeds();
+                }
             },
             // Handle feed deletion
             (deletedFeed) => {
+                console.log('DEBUG: Realtime - Feed deleted:', deletedFeed);
                 // Find and remove the deleted feed from UI
                 const newsItem = document.querySelector(`.news-item[data-feed-id="${deletedFeed.id}"]`);
                 if (newsItem && newsItem.parentNode) {
@@ -542,11 +763,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Display each category feed
                 categoryFeeds.forEach(feed => {
-                    console.log(`Processing ${feed.category} feed with ${feed.news_items?.length || 0} items`);
+                    console.log(`Processing feed with ${feed.news_items?.length || 0} items`);
                     const newsItems = formatNewsData(feed);
                     if (newsItems.length > 0) {
+                        // Determine primary category from items
+                        let primaryCategory = 'News Summary';
+                        if (newsItems.length > 0) {
+                            // Get the first item's category or default
+                            primaryCategory = newsItems[0].category || primaryCategory;
+                        }
+                        
                         // Make sure we mark these as sample data for proper handling
-                        const newsItem = generateNewsItem(newsItems, true, feed.id, feed.category, feed.date);
+                        const newsItem = generateNewsItem(newsItems, true, feed.id, primaryCategory, feed.date, feed.title);
                         newsContainer.appendChild(newsItem);
                     }
                 });
@@ -587,7 +815,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Create a single fallback feed if we have no data
                 const fallbackFeed = {
                     id: 'fallback-1',
-                    category: 'Preview',
                     date: new Date().toISOString(), // current time
                     news_items: [
                         {
@@ -595,13 +822,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             title: 'Sample News Item',
                             content: 'This is a fallback sample news item. Your actual news will look better than this.',
                             source: 'example.com',
-                            source_url: '#'
+                            source_url: '#',
+                            category: 'Preview'
                         }
                     ]
                 };
                 
                 const newsItems = formatNewsData(fallbackFeed);
-                const newsItem = generateNewsItem(newsItems, true, fallbackFeed.id, fallbackFeed.category, fallbackFeed.date);
+                const newsItem = generateNewsItem(newsItems, true, fallbackFeed.id, 'Preview', fallbackFeed.date, fallbackFeed.title);
                 
                 // Add the fallback item to the container
                 newsContainer.appendChild(newsItem);
@@ -666,8 +894,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sampleControls.parentNode.removeChild(sampleControls);
         }
         
-        // Explicitly show the empty state
-        if (count > 0) {
+        // Explicitly show the empty state if there's no real data
+        if (count > 0 && !document.querySelector('.news-item:not([data-is-sample="true"])')) {
             // Reset displays to show empty state properly
             if (newsContainer) {
                 newsContainer.innerHTML = '';
@@ -678,10 +906,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 emptyState.style.display = 'flex';
             }
             
-            // Show success message
-            showToast(`Cleared ${count} sample feeds`, 'success');
+            // Show success message only if called directly (not as part of loading real data)
+            if (count > 0 && arguments.callee.caller !== loadNewsFeeds) {
+                showToast(`Cleared ${count} sample feeds`, 'success');
+            }
         } else {
-            showToast('No sample feeds to clear', 'info');
+            // Only show toast if called directly and there were samples to clear
+            if (count > 0 && arguments.callee.caller !== loadNewsFeeds) {
+                showToast(`Cleared ${count} sample feeds`, 'success');
+            }
+        }
+    }
+
+    // Function to update empty state message based on context
+    function updateEmptyStateMessage(message) {
+        if (emptyState) {
+            const messageElement = document.querySelector('.empty-state-message');
+            if (messageElement) {
+                if (message) {
+                    // Use provided message if available
+                    messageElement.textContent = message;
+                } else if (currentSubmissionId) {
+                    // Default message for when submission ID exists
+                    messageElement.textContent = 'Your news feed is being prepared. Check back soon for updates.';
+                    
+                    // Disable preview button when waiting for real data with a submission ID
+                    if (emptyPreviewButton) {
+                        emptyPreviewButton.disabled = true;
+                        emptyPreviewButton.classList.add('disabled');
+                    }
+                } else {
+                    // Default message for root URL with no submission ID
+                    messageElement.textContent = 'No news feeds available at the moment. Please check back later or click "Show Preview" to see an example.';
+                    
+                    // Enable preview button when no submission ID exists
+                    if (emptyPreviewButton) {
+                        emptyPreviewButton.disabled = false;
+                        emptyPreviewButton.classList.remove('disabled');
+                    }
+                }
+            }
         }
     }
 
@@ -762,15 +1026,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        // Initial loading of news feeds if submission exists
-        if (currentSubmissionId) {
-            loadNewsFeeds();
-            
-            // Setup real-time subscription for updates
-            setupRealTimeSubscription();
-        } else {
-            toggleEmptyState(emptyState, newsContainer, true);
-        }
+        // Initial loading of news feeds
+        console.log('DEBUG: init - Loading initial feeds');
+        loadNewsFeeds();
+
+        // Setup real-time subscription for updates regardless of submission ID
+        console.log('DEBUG: init - Setting up real-time subscription');
+        setupRealTimeSubscription();
     }
     
     // Start the app
