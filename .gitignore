@@ -27,3 +27,14 @@ yarn-error.log*
 # Build artifacts
 dist/
 build/
+
+# Supabase
+supabase/.temp/
+supabase/.temp
+*.local.js
+
+# Temporary/development script outputs
+*.temp.*
+**/temp/
+**/tmp/
+test-*.sh
