@@ -1,7 +1,6 @@
 /**
- * Test Data Generator
- * This script will generate fake news feeds and insert them into Supabase
- * to test the real data functionality of the news feed application.
+ * Development Data Generator
+ * This script generates test data for development environment tables (dev_news_feeds, dev_news_items)
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -235,81 +234,155 @@ function generateNewsFeed(submissionId, category = null) {
   };
 }
 
+// Check if tables exist before proceeding
+async function checkDevTables() {
+  try {
+    // Check if dev_news_feeds table exists
+    const { data, error } = await supabase
+      .from('dev_news_feeds')
+      .select('id')
+      .limit(1);
+    
+    if (error) {
+      if (error.code === '42P01') { // Table doesn't exist error
+        console.error('❌ Dev tables not found. Please run the SQL setup script first.');
+        console.error('Run: npm run setup-dev-db');
+        console.error('\nOr run the SQL directly in the Supabase SQL editor. The SQL can be found in the setup script output.');
+        return false;
+      }
+      
+      // Other errors
+      console.error('Error checking dev tables:', error);
+      return false;
+    }
+    
+    // Table exists
+    console.log('✅ Dev tables found and accessible');
+    return true;
+  } catch (error) {
+    console.error('Error checking dev tables:', error);
+    return false;
+  }
+}
+
 // Create readline interface for user input
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
 
-// Main function to insert test data
-async function insertTestData() {
-  console.log('🔌 Connected to Supabase:', supabaseUrl);
+// Main function to insert dev test data
+async function insertDevTestData() {
+  console.log('🔌 Connected to Supabase (DEV MODE):', supabaseUrl);
   
-  rl.question('Enter a submission ID (or leave blank to generate one): ', async (submissionId) => {
-    // Generate a random submission ID if not provided
-    const feedSubmissionId = submissionId || `test-${Date.now().toString(36)}`;
-    console.log(`Using submission ID: ${feedSubmissionId}`);
-    
-    rl.question('How many feeds do you want to generate? (default: 3): ', async (feedCountInput) => {
-      const feedCount = parseInt(feedCountInput) || 3;
-      console.log(`Generating ${feedCount} feeds...`);
-      
-      // Generate feeds
-      for (let i = 0; i < feedCount; i++) {
-        const categoryIndex = i % CATEGORIES.length;
-        const feed = generateNewsFeed(feedSubmissionId, CATEGORIES[categoryIndex]);
+  // Check if dev tables exist
+  const tablesExist = await checkDevTables();
+  if (!tablesExist) {
+    rl.close();
+    return;
+  }
+  
+  // Clear existing data prompt
+  rl.question('Clear existing dev data first? (y/n): ', async (answer) => {
+    if (answer.toLowerCase() === 'y') {
+      try {
+        console.log('Clearing existing dev data...');
         
-        // Insert the feed
-        const { data: feedData, error: feedError } = await supabase
-          .from('news_feeds')
-          .insert({
-            submission_id: feed.submission_id,
-            title: feed.title,
-            date: feed.date
-          })
-          .select('id');
-          
-        if (feedError) {
-          console.error(`Error inserting feed ${i+1}:`, feedError);
-          continue;
+        // Delete all existing data from dev_news_feeds (cascades to dev_news_items)
+        const { error } = await supabase
+          .from('dev_news_feeds')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+        
+        if (error) {
+          console.error('Error clearing dev data:', error);
+        } else {
+          console.log('✅ Existing dev data cleared successfully');
         }
-        
-        console.log(`✅ Inserted feed ${i+1} (${feed.category})`);
-        
-        // Get the feed ID
-        const feedId = feedData[0].id;
-        
-        // Insert news items for this feed
-        for (const item of feed.news_items) {
-          const { error: itemError } = await supabase
-            .from('news_items')
-            .insert({
-              feed_id: feedId,
-              title: item.title,
-              content: item.content,
-              source: item.source,
-              source_url: item.source_url,
-              category: feed.category
-            });
-            
-          if (itemError) {
-            console.error(`Error inserting news item:`, itemError);
-          }
-        }
-        
-        console.log(`  └─ Added ${feed.news_items.length} news items`);
+      } catch (error) {
+        console.error('Error clearing dev data:', error);
       }
+    }
+    
+    rl.question('Enter a submission ID (or leave blank to generate one): ', async (submissionId) => {
+      // Generate a random submission ID if not provided
+      const feedSubmissionId = submissionId || `dev-${Date.now().toString(36)}`;
+      console.log(`Using submission ID: ${feedSubmissionId}`);
       
-      console.log('\n🎉 Test data generation complete!');
-      console.log(`To view the feeds, use submission ID: ${feedSubmissionId}`);
-      console.log('You can now open your application and see the test feeds.');
-      console.log(`\nOpen this link to automatically load the test data:`);
-      console.log(`http://localhost:5173/?id=${feedSubmissionId}`);
-      
-      rl.close();
+      rl.question('How many feeds do you want to generate? (default: 3): ', async (feedCountInput) => {
+        const feedCount = parseInt(feedCountInput) || 3;
+        console.log(`Generating ${feedCount} feeds...`);
+        
+        let insertedFeeds = 0;
+        
+        // Generate feeds
+        for (let i = 0; i < feedCount; i++) {
+          const categoryIndex = i % CATEGORIES.length;
+          const feed = generateNewsFeed(feedSubmissionId, CATEGORIES[categoryIndex]);
+          
+          // Insert the feed to dev_news_feeds table
+          const { data: feedData, error: feedError } = await supabase
+            .from('dev_news_feeds')
+            .insert({
+              submission_id: feed.submission_id,
+              title: feed.title,
+              category: feed.category,
+              date: feed.date
+            })
+            .select('id');
+            
+          if (feedError) {
+            console.error(`Error inserting feed ${i+1}:`, feedError);
+            continue;
+          }
+          
+          console.log(`✅ Inserted feed ${i+1} (${feed.category})`);
+          insertedFeeds++;
+          
+          // Get the feed ID
+          const feedId = feedData[0].id;
+          
+          let insertedItems = 0;
+          
+          // Insert news items for this feed to dev_news_items table
+          for (const item of feed.news_items) {
+            const { error: itemError } = await supabase
+              .from('dev_news_items')
+              .insert({
+                feed_id: feedId,
+                title: item.title,
+                content: item.content,
+                source: item.source,
+                source_url: item.source_url,
+                category: feed.category
+              });
+              
+            if (itemError) {
+              console.error(`Error inserting news item:`, itemError);
+            } else {
+              insertedItems++;
+            }
+          }
+          
+          console.log(`  └─ Added ${insertedItems} news items`);
+        }
+        
+        if (insertedFeeds > 0) {
+          console.log('\n🎉 DEV test data generation complete!');
+          console.log(`Inserted ${insertedFeeds}/${feedCount} feeds with a total of ${insertedFeeds * 4} news items (approx)`);
+          console.log(`To view the feeds, use submission ID: ${feedSubmissionId}`);
+          console.log('\nYou can now open your development application and see the test feeds.');
+          console.log(`\nOpen this link to automatically load the test data:`);
+          console.log(`http://localhost:5173/?id=${feedSubmissionId}&env=dev`);
+        } else {
+          console.log('\n❌ Failed to insert any feeds. Please check the errors above.');
+        }
+        
+        rl.close();
+      });
     });
   });
 }
 
 // Run the script
-insertTestData(); 
+insertDevTestData(); 
