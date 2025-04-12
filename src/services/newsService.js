@@ -5,6 +5,16 @@ import supabase from './supabase.js';
  * Handles all interactions with the news_feeds and news_items tables in Supabase
  */
 
+// Helper function to get correct table name based on environment
+function getTableName(baseTable) {
+  // Check for environment query parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const env = urlParams.get('env');
+  
+  // If dev environment, use dev_ prefix
+  return env === 'dev' ? `dev_${baseTable}` : baseTable;
+}
+
 /**
  * Fetch all news feeds
  * @returns {Promise<Array>} - Array of news feeds
@@ -12,12 +22,12 @@ import supabase from './supabase.js';
 export async function fetchNewsFeeds() {
   try {
     const { data, error } = await supabase
-      .from('news_feeds')
+      .from(getTableName('news_feeds'))
       .select(`
         id,
         date,
         title,
-        news_items (
+        ${getTableName('news_items')} (
           id,
           title,
           content,
@@ -29,7 +39,16 @@ export async function fetchNewsFeeds() {
       .order('date', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    
+    // Fix for dev table names - ensure consistent news_items property
+    const formattedData = data.map(feed => {
+      return {
+        ...feed,
+        news_items: feed[getTableName('news_items')] || []
+      };
+    });
+    
+    return formattedData || [];
   } catch (error) {
     console.error('Error fetching news feeds:', error);
     return [];
@@ -37,28 +56,20 @@ export async function fetchNewsFeeds() {
 }
 
 /**
- * Delete a news feed and all its items
- * @param {string} feedId - The feed ID to delete
+ * Delete a news feed
+ * @param {string} feedId - ID of the feed to delete
  * @returns {Promise<boolean>} - Success status
  */
 export async function deleteNewsFeed(feedId) {
   try {
-    // First delete the related news items
-    const { error: itemsError } = await supabase
-      .from('news_items')
-      .delete()
-      .eq('feed_id', feedId);
-    
-    if (itemsError) throw itemsError;
-    
-    // Then delete the feed itself
-    const { error: feedError } = await supabase
-      .from('news_feeds')
+    const { error } = await supabase
+      .from(getTableName('news_feeds'))
       .delete()
       .eq('id', feedId);
     
-    if (feedError) throw feedError;
+    if (error) throw error;
     
+    // If we've reached this point, the deletion was successful
     return true;
   } catch (error) {
     console.error('Error deleting news feed:', error);
@@ -73,8 +84,10 @@ export async function deleteNewsFeed(feedId) {
  * @returns {Object} - Subscription object with unsubscribe method
  */
 export function subscribeToNewsFeeds(onInsert, onDelete) {
+  const tableName = getTableName('news_feeds');
+  
   const subscription = supabase
-    .channel('public:news_feeds')
+    .channel(`public:${tableName}`)
     .on('INSERT', payload => {
       onInsert(payload.new);
     })
@@ -93,12 +106,12 @@ export function subscribeToNewsFeeds(onInsert, onDelete) {
 export async function getLatestNewsFeed() {
   try {
     const { data, error } = await supabase
-      .from('news_feeds')
+      .from(getTableName('news_feeds'))
       .select(`
         id,
         date,
         title,
-        news_items (
+        ${getTableName('news_items')} (
           id,
           title,
           content,
@@ -112,6 +125,12 @@ export async function getLatestNewsFeed() {
       .single();
     
     if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "No rows returned" error
+    
+    // Fix for dev table names
+    if (data) {
+      const itemsKey = getTableName('news_items');
+      data.news_items = data[itemsKey] || [];
+    }
     
     return data || null;
   } catch (error) {
@@ -128,10 +147,10 @@ export async function fetchSampleNewsData() {
   try {
     // Try to get the sample news feed from Supabase (using a known test submission ID)
     const { data, error } = await supabase
-      .from('news_feeds')
+      .from(getTableName('news_feeds'))
       .select(`
         id,
-        news_items (
+        ${getTableName('news_items')} (
           id,
           title,
           content,
@@ -149,8 +168,9 @@ export async function fetchSampleNewsData() {
     }
     
     // Format the data for display
-    if (data && data.news_items && data.news_items.length > 0) {
-      return data.news_items.map(item => ({
+    const itemsKey = getTableName('news_items');
+    if (data && data[itemsKey] && data[itemsKey].length > 0) {
+      return data[itemsKey].map(item => ({
         title: item.title,
         content: item.content,
         url: item.source_url || '#',
@@ -173,11 +193,11 @@ export async function fetchSampleCategories() {
   try {
     // Check if we have a sample_categories table in Supabase
     const { data, error } = await supabase
-      .from('sample_categories')
+      .from(getTableName('sample_categories'))
       .select(`
         id,
         category,
-        news_items (
+        ${getTableName('news_items')} (
           id,
           title,
           content,
@@ -192,11 +212,11 @@ export async function fetchSampleCategories() {
       console.warn('Could not fetch sample categories from Supabase:', error);
       // Try the sample_news_feeds table as an alternative
       const { data: feedsData, error: feedsError } = await supabase
-        .from('sample_news_feeds')
+        .from(getTableName('sample_news_feeds'))
         .select(`
           id,
           category,
-          news_items (
+          ${getTableName('news_items')} (
             id,
             title,
             content,
@@ -212,10 +232,28 @@ export async function fetchSampleCategories() {
         return [];
       }
       
-      return feedsData || [];
+      // Fix for dev table names
+      const itemsKey = getTableName('news_items');
+      const formattedData = feedsData.map(feed => {
+        return {
+          ...feed,
+          news_items: feed[itemsKey] || []
+        };
+      });
+      
+      return formattedData || [];
     }
     
-    return data || [];
+    // Fix for dev table names
+    const itemsKey = getTableName('news_items');
+    const formattedData = data.map(category => {
+      return {
+        ...category,
+        news_items: category[itemsKey] || []
+      };
+    });
+    
+    return formattedData || [];
   } catch (error) {
     console.error('Error fetching sample categories:', error);
     return [];

@@ -14,28 +14,34 @@ export function generateSubmissionId() {
   return `sub-${uuidv4()}`;
 }
 
+// Helper function to get correct table name based on environment
+function getTableName(baseTable) {
+  // Check for environment query parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const env = urlParams.get('env');
+  
+  // If dev environment, use dev_ prefix
+  return env === 'dev' ? `dev_${baseTable}` : baseTable;
+}
+
 /**
- * Save form submission to Supabase
- * @param {Object} formData - Form data from the form
- * @param {string} submissionId - Unique ID for this submission
- * @returns {Promise<Object|null>} - The created submission or null
+ * Save form submission
+ * @param {Object} formData - Form data to save
+ * @returns {Promise<Object|null>} - Saved form submission or null
  */
-export async function saveFormSubmission(formData, submissionId) {
+export async function saveFormSubmission(formData) {
   try {
-    const { sources, topics, language, email } = formData;
-    
     const { data, error } = await supabase
-      .from('form_submissions')
+      .from(getTableName('form_submissions'))
       .insert({
-        submission_id: submissionId,
-        sources: sources,
-        topics: topics,
-        language: language,
-        email: email
+        submission_id: formData.submissionId,
+        email: formData.email,
+        sources: formData.sources || [],
+        topics: formData.topics || [],
+        languages: formData.languages || []
       })
-      .select()
-      .single();
-      
+      .select();
+    
     if (error) throw error;
     return data;
   } catch (error) {
@@ -52,14 +58,14 @@ export async function saveFormSubmission(formData, submissionId) {
 export async function getFeedsBySubmissionId(submissionId) {
   try {
     const { data, error } = await supabase
-      .from('news_feeds')
+      .from(getTableName('news_feeds'))
       .select(`
         id,
         submission_id,
         title,
         date,
         category,
-        news_items (
+        ${getTableName('news_items')} (
           id,
           title,
           content,
@@ -77,6 +83,8 @@ export async function getFeedsBySubmissionId(submissionId) {
     const feedsWithCategory = data.map(feed => {
       return {
         ...feed,
+        // Fix for dev tables - rename the nested items property to news_items
+        news_items: feed[getTableName('news_items')] || [],
         category: feed.category || 'News Summary' // Default category if not specified
       };
     });
@@ -96,7 +104,7 @@ export async function getFeedsBySubmissionId(submissionId) {
 export async function getFormSubmission(submissionId) {
   try {
     const { data, error } = await supabase
-      .from('form_submissions')
+      .from(getTableName('form_submissions'))
       .select('*')
       .eq('submission_id', submissionId)
       .single();

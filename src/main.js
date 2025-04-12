@@ -39,8 +39,46 @@ document.addEventListener('DOMContentLoaded', () => {
     // Track active subscriptions
     let activeSubscription = null;
     
-    // Track current submission ID
-    let currentSubmissionId = localStorage.getItem('submissionId') || null;
+    // Track current submission ID - get from URL param first, then localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    let currentSubmissionId = urlParams.get('id') || localStorage.getItem('submissionId') || null;
+    
+    // Check if we're in development mode
+    const isDevelopmentMode = urlParams.get('env') === 'dev';
+    
+    // Store the submission ID in localStorage if it came from URL
+    if (urlParams.get('id')) {
+        localStorage.setItem('submissionId', urlParams.get('id'));
+    }
+    
+    // Show dev mode banner if needed
+    if (isDevelopmentMode) {
+        const devBanner = document.createElement('div');
+        devBanner.className = 'dev-mode-banner';
+        devBanner.textContent = 'Development Environment';
+        document.body.insertBefore(devBanner, document.body.firstChild);
+        
+        // Add some CSS for the banner
+        const style = document.createElement('style');
+        style.textContent = `
+            .dev-mode-banner {
+                background-color: #ff5722;
+                color: white;
+                text-align: center;
+                padding: 5px;
+                font-weight: bold;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 1000;
+            }
+            body {
+                margin-top: 30px;
+            }
+        `;
+        document.head.appendChild(style);
+    }
 
     // Detect if device is mobile
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
