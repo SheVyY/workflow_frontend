@@ -7,12 +7,29 @@ import supabase from './supabase.js';
 
 // Helper function to get correct table name based on environment
 function getTableName(baseTable) {
+  // Check if running on localhost
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1';
+  
   // Check for environment query parameter
   const urlParams = new URLSearchParams(window.location.search);
   const env = urlParams.get('env');
   
-  // If dev environment, use dev_ prefix
-  return env === 'dev' ? `dev_${baseTable}` : baseTable;
+  // Determine which table to use
+  const useDevTable = (env === 'dev' || isLocalhost);
+  const tableName = useDevTable ? `dev_${baseTable}` : baseTable;
+  
+  // Log table selection (only in development for debugging)
+  if (isLocalhost) {
+    console.log(`Table selection: ${baseTable} → ${tableName}`, {
+      isLocalhost,
+      hostname: window.location.hostname,
+      envParam: env,
+      useDevTable
+    });
+  }
+  
+  return tableName;
 }
 
 /**
@@ -186,18 +203,21 @@ export async function fetchSampleNewsData() {
 }
 
 /**
- * Fetch sample category data for preview from Supabase
+ * Fetch sample category data for preview
  * @returns {Promise<Array>} - Array of categories with news items for preview
  */
 export async function fetchSampleCategories() {
   try {
-    // Check if we have a sample_categories table in Supabase
+    console.log('Fetching sample data from database for preview');
+    
+    // Try to get sample feeds with their items
     const { data, error } = await supabase
-      .from(getTableName('sample_categories'))
+      .from('sample_news_feeds')
       .select(`
-        id,
-        category,
-        ${getTableName('news_items')} (
+        id, 
+        title,
+        date,
+        sample_news_items (
           id,
           title,
           content,
@@ -209,53 +229,284 @@ export async function fetchSampleCategories() {
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.warn('Could not fetch sample categories from Supabase:', error);
-      // Try the sample_news_feeds table as an alternative
-      const { data: feedsData, error: feedsError } = await supabase
-        .from(getTableName('sample_news_feeds'))
-        .select(`
-          id,
-          category,
-          ${getTableName('news_items')} (
-            id,
-            title,
-            content,
-            source,
-            source_url,
-            category
-          )
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (feedsError) {
-        console.warn('Could not fetch sample_news_feeds either:', feedsError);
-        return [];
-      }
-      
-      // Fix for dev table names
-      const itemsKey = getTableName('news_items');
-      const formattedData = feedsData.map(feed => {
-        return {
-          ...feed,
-          news_items: feed[itemsKey] || []
-        };
-      });
-      
-      return formattedData || [];
+      console.warn('Error fetching sample data:', error);
+      return createFallbackSampleData();
     }
     
-    // Fix for dev table names
-    const itemsKey = getTableName('news_items');
-    const formattedData = data.map(category => {
+    if (!data || data.length === 0) {
+      console.warn('No sample data found in database');
+      return createFallbackSampleData();
+    }
+    
+    // Format the data to match our expected structure
+    const formattedData = data.map(feed => {
       return {
-        ...category,
-        news_items: category[itemsKey] || []
+        ...feed,
+        news_items: feed.sample_news_items || []
       };
     });
     
-    return formattedData || [];
+    return formattedData;
   } catch (error) {
     console.error('Error fetching sample categories:', error);
+    return createFallbackSampleData();
+  }
+}
+
+/**
+ * Creates fallback sample data in case the database tables don't exist or are empty
+ * @returns {Array} Array of sample feeds with news items
+ */
+function createFallbackSampleData() {
+  console.log('Using fallback sample data');
+  
+  return [{
+    id: 'sample-fallback-1',
+    title: 'News Summary',
+    date: new Date().toISOString(),
+    news_items: [{
+      id: 'sample-fallback-item-1',
+      title: 'Sample Preview News',
+      content: 'This is a sample news item for preview purposes. Your actual content will be displayed here when available.',
+      source: 'example.com',
+      source_url: '#',
+      category: 'General'
+    }]
+  }];
+}
+
+/**
+ * Fetch all development feeds regardless of submission ID
+ * This is used in development mode to show all available test data
+ * @returns {Promise<Array>} - Array of all feeds in the development table
+ */
+export async function fetchAllDevFeeds() {
+  try {
+    // Automatically use dev feeds on localhost
+    const isLocalDevelopment = window.location.hostname === 'localhost' || 
+                              window.location.hostname === '127.0.0.1';
+    
+    console.log('DEBUG: fetchAllDevFeeds - Hostname check:', {
+      hostname: window.location.hostname,
+      isLocalDevelopment: isLocalDevelopment
+    });
+    
+    if (!isLocalDevelopment) {
+      console.log('Not in development environment, skipping fetchAllDevFeeds');
+      return [];
+    }
+    
+    console.log('DEBUG: fetchAllDevFeeds - Fetching all development feeds');
+    const { data, error } = await supabase
+      .from('dev_news_feeds')
+      .select(`
+        id,
+        submission_id,
+        title,
+        date,
+        dev_news_items (
+          id,
+          title,
+          content,
+          source,
+          source_url,
+          category
+        )
+      `)
+      .order('date', { ascending: false });
+    
+    if (error) {
+      console.error('DEBUG: fetchAllDevFeeds - Error fetching dev feeds:', error);
+      return [];
+    }
+    
+    console.log('DEBUG: fetchAllDevFeeds - Raw data received:', data?.length || 0, 'feeds');
+    
+    if (!data || data.length === 0) {
+      console.log('DEBUG: fetchAllDevFeeds - No dev feeds found in database');
+      return [];
+    }
+    
+    // Format the data properly
+    const formattedData = data.map(feed => {
+      console.log(`DEBUG: fetchAllDevFeeds - Processing feed ${feed.id}, has ${feed.dev_news_items?.length || 0} items`);
+      return {
+        ...feed,
+        news_items: feed.dev_news_items || []
+      };
+    });
+    
+    console.log('DEBUG: fetchAllDevFeeds - Returning formatted data with', formattedData.length, 'feeds');
+    return formattedData || [];
+  } catch (error) {
+    console.error('Error fetching all development feeds:', error);
     return [];
+  }
+}
+
+/**
+ * Fetch latest 10 news feeds regardless of submission ID
+ * This is used to show feeds on the root URL without requiring any parameters
+ * @returns {Promise<Array>} - Array of latest feeds from the database
+ */
+export async function fetchLatestFeeds(limit = 10) {
+  try {
+    console.log('DEBUG: fetchLatestFeeds - Starting fetch operation');
+    const tableName = getTableName('news_feeds');
+    const itemsTableName = getTableName('news_items');
+    
+    console.log('DEBUG: fetchLatestFeeds - Using tables:', { feedsTable: tableName, itemsTable: itemsTableName });
+    
+    const { data, error } = await supabase
+      .from(tableName)
+      .select(`
+        id,
+        submission_id,
+        title,
+        date,
+        ${itemsTableName} (
+          id,
+          title,
+          content,
+          source,
+          source_url,
+          category
+        )
+      `)
+      .order('date', { ascending: false })
+      .limit(limit);
+    
+    if (error) {
+      console.error('Error fetching latest feeds:', error);
+      return [];
+    }
+    
+    console.log('DEBUG: fetchLatestFeeds - Raw data received:', JSON.stringify(data, null, 2));
+    console.log('DEBUG: fetchLatestFeeds - Number of feeds received:', data?.length || 0);
+    
+    if (!data || data.length === 0) {
+      console.log('DEBUG: fetchLatestFeeds - No feeds found in the database');
+      return [];
+    }
+    
+    // Format the data properly
+    const formattedData = data.map(feed => {
+      // Log each feed's items count for debugging
+      console.log(`DEBUG: fetchLatestFeeds - Feed ${feed.id} has ${feed[itemsTableName]?.length || 0} news items`);
+      return {
+        ...feed,
+        news_items: feed[itemsTableName] || []
+      };
+    });
+    
+    console.log('DEBUG: fetchLatestFeeds - Returning formatted data:', JSON.stringify(formattedData.map(f => ({
+      id: f.id,
+      title: f.title,
+      news_items_count: f.news_items.length
+    })), null, 2));
+    
+    return formattedData || [];
+  } catch (error) {
+    console.error('Error fetching latest feeds:', error);
+    return [];
+  }
+}
+
+/**
+ * Diagnostic function to test database connectivity
+ * Can be called from the browser console
+ */
+export async function testDatabaseConnection() {
+  try {
+    console.log('TEST: Beginning database connection test');
+    console.log('TEST: Using Supabase URL:', supabase.supabaseUrl);
+    
+    // Test 1: Basic connectivity - check if we can connect to Supabase
+    console.log('TEST 1: Testing basic connectivity');
+    // Use a simple GET request instead of a HEAD request with count
+    const { data: pingData, error: pingError } = await supabase
+      .from('news_feeds')
+      .select('id')
+      .limit(1);
+    
+    if (pingError) {
+      console.error('TEST 1: Failed - Connection error:', pingError);
+    } else {
+      console.log('TEST 1: Success - Connection established');
+    }
+    
+    // Test 2: Check tables - test both regular and dev tables
+    console.log('TEST 2: Testing table access');
+    const tables = ['news_feeds', 'dev_news_feeds'];
+    
+    for (const table of tables) {
+      console.log(`TEST 2: Checking table ${table}`);
+      const { data, error } = await supabase
+        .from(table)
+        .select('id, title')
+        .limit(1);
+      
+      if (error) {
+        console.error(`TEST 2: Failed for ${table}:`, error);
+      } else {
+        console.log(`TEST 2: Success for ${table}:`, data);
+      }
+    }
+    
+    // Test 3: Check if we can read news items from both regular and dev tables
+    console.log('TEST 3: Testing reading news items');
+    
+    // Try dev news feeds first
+    const { data: devData, error: devError } = await supabase
+      .from('dev_news_feeds')
+      .select(`
+        id,
+        title,
+        dev_news_items (
+          id,
+          title,
+          content
+        )
+      `)
+      .limit(1);
+    
+    if (devError) {
+      console.error('TEST 3: Failed for dev tables:', devError);
+    } else {
+      console.log('TEST 3: Success for dev tables:', devData);
+    }
+    
+    // Try regular news feeds
+    const { data: prodData, error: prodError } = await supabase
+      .from('news_feeds')
+      .select(`
+        id,
+        title,
+        news_items (
+          id,
+          title,
+          content
+        )
+      `)
+      .limit(1);
+    
+    if (prodError) {
+      console.error('TEST 3: Failed for production tables:', prodError);
+    } else {
+      console.log('TEST 3: Success for production tables:', prodData);
+    }
+    
+    console.log('TEST: Database connection test complete');
+    return {
+      success: true,
+      devData,
+      prodData
+    };
+  } catch (error) {
+    console.error('TEST: Unhandled error during database test:', error);
+    return {
+      success: false,
+      error
+    };
   }
 } 

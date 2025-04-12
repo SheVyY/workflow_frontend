@@ -16,12 +16,29 @@ export function generateSubmissionId() {
 
 // Helper function to get correct table name based on environment
 function getTableName(baseTable) {
+  // Check if running on localhost
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1';
+  
   // Check for environment query parameter
   const urlParams = new URLSearchParams(window.location.search);
   const env = urlParams.get('env');
   
-  // If dev environment, use dev_ prefix
-  return env === 'dev' ? `dev_${baseTable}` : baseTable;
+  // Determine which table to use
+  const useDevTable = (env === 'dev' || isLocalhost);
+  const tableName = useDevTable ? `dev_${baseTable}` : baseTable;
+  
+  // Log table selection (only in development for debugging)
+  if (isLocalhost) {
+    console.log(`Table selection: ${baseTable} → ${tableName}`, {
+      isLocalhost,
+      hostname: window.location.hostname,
+      envParam: env,
+      useDevTable
+    });
+  }
+  
+  return tableName;
 }
 
 /**
@@ -57,6 +74,9 @@ export async function saveFormSubmission(formData) {
  */
 export async function getFeedsBySubmissionId(submissionId) {
   try {
+    console.log('Fetching feeds for submission ID:', submissionId);
+    console.log('Using table:', getTableName('news_feeds'));
+    
     const { data, error } = await supabase
       .from(getTableName('news_feeds'))
       .select(`
@@ -64,7 +84,6 @@ export async function getFeedsBySubmissionId(submissionId) {
         submission_id,
         title,
         date,
-        category,
         ${getTableName('news_items')} (
           id,
           title,
@@ -77,18 +96,39 @@ export async function getFeedsBySubmissionId(submissionId) {
       .eq('submission_id', submissionId)
       .order('date', { ascending: false });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching feeds:', error);
+      throw error;
+    }
+    
+    console.log('Feeds data received:', data);
     
     // Group feeds by category if needed
     const feedsWithCategory = data.map(feed => {
+      const itemsKey = getTableName('news_items');
+      console.log('Item Key:', itemsKey, 'Feed contains keys:', Object.keys(feed));
+      
+      // Get news items
+      const newsItems = feed[itemsKey] || [];
+      
+      // Determine primary category from items
+      let primaryCategory = 'News Summary';
+      
+      if (newsItems.length > 0) {
+        // Use the first item's category if available
+        primaryCategory = newsItems[0].category || primaryCategory;
+      }
+      
       return {
         ...feed,
         // Fix for dev tables - rename the nested items property to news_items
-        news_items: feed[getTableName('news_items')] || [],
-        category: feed.category || 'News Summary' // Default category if not specified
+        news_items: newsItems,
+        // Derive category from news items
+        category: primaryCategory
       };
     });
     
+    console.log('Processed feeds:', feedsWithCategory);
     return feedsWithCategory || [];
   } catch (error) {
     console.error('Error fetching feeds by submission ID:', error);
