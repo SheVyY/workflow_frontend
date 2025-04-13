@@ -30,6 +30,30 @@ function createDropdownMenu(feedId) {
     
     const menu = document.createElement('ul');
     
+    // Add download as CSV option
+    const downloadItem = document.createElement('li');
+    downloadItem.className = 'download-csv';
+    downloadItem.textContent = 'Download as CSV';
+    downloadItem.addEventListener('click', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        const newsItem = this.closest('.news-item');
+        
+        if (newsItem && newsItem.dataset.feedId) {
+            const feedId = newsItem.dataset.feedId;
+            console.log('Downloading feed as CSV:', feedId);
+            
+            // Dispatch download event
+            window.dispatchEvent(new CustomEvent('download-feed-csv', { 
+                detail: { feedId: feedId } 
+            }));
+            
+            closeAllDropdowns(); // Close dropdown after action
+        }
+    });
+    
+    // Add delete option
     const deleteItem = document.createElement('li');
     deleteItem.className = 'delete';
     deleteItem.textContent = 'Delete news feed';
@@ -91,6 +115,8 @@ function createDropdownMenu(feedId) {
         }
     });
     
+    // Add items to the menu
+    menu.appendChild(downloadItem);
     menu.appendChild(deleteItem);
     dropdown.appendChild(menu);
     

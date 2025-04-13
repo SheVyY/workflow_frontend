@@ -563,4 +563,50 @@ export async function testDatabaseConnection() {
       error
     };
   }
+}
+
+/**
+ * Get a specific news feed by ID
+ * @param {string} feedId - The ID of the feed to retrieve
+ * @returns {Promise<Object|null>} - The news feed or null if not found
+ */
+export async function getFeedById(feedId) {
+  try {
+    console.log(`Fetching feed with ID: ${feedId}`);
+    
+    const { data, error } = await supabase
+      .from(getTableName('news_feeds'))
+      .select(`
+        id,
+        submission_id,
+        title,
+        date,
+        ${getTableName('news_items')} (
+          id,
+          title,
+          content,
+          source,
+          source_url,
+          category
+        )
+      `)
+      .eq('id', feedId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching feed by ID:', error);
+      return null;
+    }
+    
+    // Fix for dev table names
+    if (data) {
+      const itemsKey = getTableName('news_items');
+      data.news_items = data[itemsKey] || [];
+    }
+    
+    return data;
+  } catch (error) {
+    console.error(`Error fetching feed with ID ${feedId}:`, error);
+    return null;
+  }
 } 

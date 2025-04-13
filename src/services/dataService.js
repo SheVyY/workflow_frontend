@@ -287,4 +287,13 @@ export async function getFeedsBySubmissionId(submissionId) {
   
   // Otherwise use real data from Supabase
   return formSupabaseService.getFeedsBySubmissionId(submissionId);
+}
+
+/**
+ * Get a feed by ID
+ * @param {string} feedId - The ID of the feed to retrieve
+ * @returns {Promise<Object|null>} - The feed or null if not found
+ */
+export async function getFeedById(feedId) {
+  return supabaseService.getFeedById(feedId);
 } 

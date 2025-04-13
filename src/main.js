@@ -11,13 +11,14 @@ import {
     getFeedsBySubmissionId,
     fetchAllDevFeeds,
     fetchLatestFeeds,
-    testDatabaseConnection
+    testDatabaseConnection,
+    getFeedById
 } from './services/dataService.js';
 
 import { sendFormDataToWebhook } from './services/webhookService.js';
 import { generateNewsItem, closeAllDropdowns } from './components/NewsItem.js';
 import { createTag, collectFormData, validateFormData, isValidEmail, showFieldError, clearFieldError } from './components/FormHandler.js';
-import { setupAccessibilityAnnouncements, setupTagKeyboardNavigation, showToast, showLoadingState, hideLoadingState, toggleEmptyState, debounce } from './utils/UIHelpers.js';
+import { setupAccessibilityAnnouncements, setupTagKeyboardNavigation, showToast, showLoadingState, hideLoadingState, toggleEmptyState, debounce, convertFeedToCSV, downloadCSV } from './utils/UIHelpers.js';
 
 // Import CSS directly - this ensures Vite processes it correctly in production
 import './styles/styles.css';
@@ -441,36 +442,37 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleDeleteFeed(feedId) {
         try {
             console.log('Handling delete for feed ID:', feedId);
-            // Find the feed element before attempting to delete
-            const newsItem = document.querySelector(`.news-item[data-feed-id="${feedId}"]`);
-            
-            // Remove from UI immediately for responsive feel
-            if (newsItem && newsItem.parentNode) {
-                console.log('Removing feed from UI');
-                newsItem.parentNode.removeChild(newsItem);
-            }
             
             // Check if this is a sample feed (IDs starting with 'sample-')
             const isSampleFeed = feedId && feedId.toString().startsWith('sample-');
             
             if (!isSampleFeed) {
-                // Only delete from database if it's not a sample feed
+                // For real feeds, delete from database first
+                console.log('Deleting feed from database...');
                 const success = await deleteNewsFeed(feedId);
                 
                 if (success) {
                     console.log('Successfully deleted feed from database');
                     showToast('News feed deleted successfully', 'success');
+                    
+                    // The UI update should be handled by the Realtime subscription
+                    // We don't need to manually remove the element as it will be handled by the subscription
+                    console.log('Waiting for Realtime delete event to update UI...');
                 } else {
-                    console.error('Database deletion failed but UI was updated');
-                    showToast('The feed was removed from view but there was an error deleting it from the database', 'error');
+                    console.error('Database deletion failed');
+                    showToast('Failed to delete the news feed. Please try again.', 'error');
                 }
             } else {
-                console.log('Skipping database deletion for sample feed:', feedId);
+                console.log('Handling sample feed deletion:', feedId);
+                // For sample feeds, just remove from the UI
+                const newsItem = document.querySelector(`.news-item[data-feed-id="${feedId}"]`);
+                if (newsItem && newsItem.parentNode) {
+                    newsItem.parentNode.removeChild(newsItem);
+                    toggleEmptyState(emptyState, newsContainer);
+                }
+                
                 showToast('Sample feed removed', 'success');
             }
-            
-            // Check if we need to show empty state
-            toggleEmptyState(emptyState, newsContainer);
         } catch (error) {
             console.error('Error deleting feed:', error);
             showToast('Failed to delete the news feed. Please try again.', 'error');
@@ -604,11 +606,32 @@ document.addEventListener('DOMContentLoaded', () => {
             // Handle feed deletion
             (deletedFeed) => {
                 console.log('DEBUG: Realtime - Feed deleted:', deletedFeed);
-                // Find and remove the deleted feed from UI
+                
+                // In development mode, we just need to reload all feeds
+                // This ensures proper UI update by refreshing the data
+                if (!currentSubmissionId) {
+                    console.log('DEBUG: Realtime - Reloading all feeds after deletion');
+                    loadNewsFeeds();
+                    return;
+                }
+                
+                // If we have a specific submission ID, only reload if it matches
+                if (currentSubmissionId === deletedFeed.submission_id) {
+                    console.log('DEBUG: Realtime - Reloading feeds after deletion for matching submission ID');
+                    loadNewsFeeds();
+                    return;
+                }
+                
+                // For other cases, try to remove the specific feed from UI
+                console.log('DEBUG: Realtime - Removing specific feed from UI:', deletedFeed.id);
                 const newsItem = document.querySelector(`.news-item[data-feed-id="${deletedFeed.id}"]`);
                 if (newsItem && newsItem.parentNode) {
                     newsItem.parentNode.removeChild(newsItem);
                     toggleEmptyState(emptyState, newsContainer);
+                    console.log('DEBUG: Realtime - Feed element removed from UI');
+                } else {
+                    console.log('DEBUG: Realtime - Could not find feed element in UI, reloading all feeds');
+                    loadNewsFeeds();
                 }
             }
         );
@@ -949,6 +972,83 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Function to handle downloading a news feed as CSV
+    async function handleDownloadFeedAsCSV(feedId) {
+        try {
+            console.log('Downloading feed as CSV:', feedId);
+            
+            // Check if this is a sample feed
+            const isSampleFeed = feedId && feedId.toString().startsWith('sample-');
+            
+            if (isSampleFeed) {
+                // For sample feeds, get the data from the DOM
+                const newsItem = document.querySelector(`.news-item[data-feed-id="${feedId}"]`);
+                if (newsItem) {
+                    // Extract data from the DOM
+                    const title = newsItem.querySelector('.news-title h2')?.textContent || 'Sample Feed';
+                    const stories = Array.from(newsItem.querySelectorAll('.news-story'));
+                    
+                    // Create a feed object with news items
+                    const feed = {
+                        id: feedId,
+                        title: title,
+                        date: new Date().toISOString(),
+                        news_items: stories.map(story => {
+                            return {
+                                title: story.querySelector('h3')?.textContent || 'No Title',
+                                content: story.querySelector('p')?.textContent || 'No Content',
+                                source: story.querySelector('.source-badge')?.textContent || 'Sample Source',
+                                source_url: story.querySelector('.read-more')?.href || '#',
+                                category: story.querySelector('.topic-badge')?.textContent || 'Sample Category'
+                            };
+                        })
+                    };
+                    
+                    // Convert to CSV
+                    const csvContent = convertFeedToCSV(feed);
+                    
+                    // Create a filename with the feed title
+                    const cleanTitle = title.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+                    const filename = `${cleanTitle}-${new Date().toISOString().split('T')[0]}.csv`;
+                    
+                    // Download the CSV
+                    downloadCSV(csvContent, filename);
+                    
+                    showToast('CSV file downloaded successfully', 'success');
+                } else {
+                    console.error('Could not find sample feed element in DOM');
+                    showToast('Error downloading CSV: Feed not found', 'error');
+                }
+            } else {
+                // For real feeds, get the latest data from the database
+                showToast('Fetching latest feed data...', 'success');
+                
+                const feed = await getFeedById(feedId);
+                
+                if (feed && feed.news_items && feed.news_items.length > 0) {
+                    // Convert to CSV
+                    const csvContent = convertFeedToCSV(feed);
+                    
+                    // Create a filename with the feed ID or title
+                    const title = feed.title || 'news-feed';
+                    const cleanTitle = title.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+                    const filename = `${cleanTitle}-${feed.id}-${new Date().toISOString().split('T')[0]}.csv`;
+                    
+                    // Download the CSV
+                    downloadCSV(csvContent, filename);
+                    
+                    showToast('CSV file downloaded successfully', 'success');
+                } else {
+                    console.error('Failed to fetch feed or feed has no items');
+                    showToast('Error downloading CSV: No data available', 'error');
+                }
+            }
+        } catch (error) {
+            console.error('Error downloading feed as CSV:', error);
+            showToast('Error downloading CSV file. Please try again.', 'error');
+        }
+    }
+
     // Initialize the app
     function init() {
         setupAccessibilityAnnouncements();
@@ -974,6 +1074,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 console.error('Delete feed event missing feedId:', e.detail);
+            }
+        });
+        
+        // Listen for download feed as CSV events
+        window.addEventListener('download-feed-csv', function(e) {
+            console.log('Download feed as CSV event received:', e.detail);
+            if (e.detail && e.detail.feedId) {
+                handleDownloadFeedAsCSV(e.detail.feedId);
+            } else {
+                console.error('Download feed event missing feedId:', e.detail);
+                showToast('Error: Could not download feed data', 'error');
             }
         });
         

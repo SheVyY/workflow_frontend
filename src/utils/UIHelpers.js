@@ -214,4 +214,80 @@ export function setupTagKeyboardNavigation() {
             }
         }
     });
+}
+
+/**
+ * Convert a news feed to CSV format
+ * @param {Object} feed - Feed object with news_items
+ * @returns {string} - CSV formatted string
+ */
+export function convertFeedToCSV(feed) {
+    if (!feed || !feed.news_items || !Array.isArray(feed.news_items)) {
+        console.error('Invalid feed data for CSV conversion');
+        return '';
+    }
+    
+    // Define CSV headers
+    const headers = ['Title', 'Content', 'Source', 'Source URL', 'Category'];
+    
+    // Start with headers
+    let csvContent = headers.join(',') + '\n';
+    
+    // Add each news item as a row
+    feed.news_items.forEach(item => {
+        // Escape fields with quotes if they contain commas
+        const escapedTitle = `"${(item.title || '').replace(/"/g, '""')}"`;
+        const escapedContent = `"${(item.content || '').replace(/"/g, '""')}"`;
+        const escapedSource = `"${(item.source || '').replace(/"/g, '""')}"`;
+        const escapedSourceUrl = `"${(item.source_url || '').replace(/"/g, '""')}"`;
+        const escapedCategory = `"${(item.category || '').replace(/"/g, '""')}"`;
+        
+        // Add row
+        const row = [
+            escapedTitle,
+            escapedContent,
+            escapedSource,
+            escapedSourceUrl,
+            escapedCategory
+        ].join(',');
+        
+        csvContent += row + '\n';
+    });
+    
+    return csvContent;
+}
+
+/**
+ * Download data as a CSV file
+ * @param {string} csvContent - CSV content to download
+ * @param {string} filename - Filename for the download
+ */
+export function downloadCSV(csvContent, filename = 'news-feed.csv') {
+    // Check for browser support
+    if (!csvContent) {
+        console.error('No CSV content provided for download');
+        return;
+    }
+    
+    // Create a Blob with the CSV content
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // Create a download link
+    const link = document.createElement('a');
+    
+    // Set up the download
+    if (navigator.msSaveBlob) {
+        // For IE and Edge
+        navigator.msSaveBlob(blob, filename);
+    } else {
+        // For other browsers
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
 } 
