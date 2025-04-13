@@ -547,20 +547,28 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show loading placeholder while waiting for feeds
             showLoadingPlaceholder();
             
-            // Add submissionId to formData
-            formData.submissionId = submissionId;
-            // Set languages field to the single language value (not an array)
-            formData.languages = formData.language;
+            // Create a complete form data object with the correct field structure
+            const submissionData = {
+                submissionId: submissionId,
+                email: formData.email,
+                sources: formData.sources || [],
+                topics: formData.topics || [],
+                language: formData.language
+            };
             
             // 1. Save form submission to Supabase
-            const submission = await saveFormSubmission(formData);
+            const submission = await saveFormSubmission(submissionData);
             
             if (!submission) {
                 throw new Error('Failed to save form submission to database');
             }
             
             // 2. Send data to webhook
-            const webhookResponse = await sendFormDataToWebhook(formData);
+            const webhookData = {
+                ...formData,
+                submissionId: submissionId
+            };
+            const webhookResponse = await sendFormDataToWebhook(webhookData);
             
             if (!webhookResponse) {
                 console.warn('Warning: Could not send data to webhook, but database submission was successful');

@@ -41,7 +41,8 @@ export async function sendFormDataToWebhook(formData) {
   try {
     console.log('Preparing webhook payload for data:', {
       email: formData.email, 
-      sourcesCount: formData.sources?.length || 0
+      sourcesCount: formData.sources?.length || 0,
+      submissionId: formData.submissionId
     });
     
     // Calculate yesterday's date in YYYY-MM-DD format
@@ -62,7 +63,8 @@ export async function sendFormDataToWebhook(formData) {
         topics: formData.topics,
         language: formData.language,
         schedule: '8AM_UTC', // Default schedule
-        date: formattedDate // Add yesterday's date
+        date: formattedDate, // Add yesterday's date
+        submission_id: formData.submissionId // Add submission ID for tracking
       },
       metadata: {
         timestamp: new Date().toISOString(),
@@ -83,12 +85,35 @@ export async function sendFormDataToWebhook(formData) {
     });
     
     if (!response.ok) {
-      console.error(`Webhook responded with status: ${response.status}`, await response.text());
+      // Try to get response content
+      let responseContent;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          responseContent = await response.json();
+        } else {
+          responseContent = await response.text();
+          console.warn('Webhook returned non-JSON response:', responseContent);
+        }
+      } catch (parseError) {
+        responseContent = `Failed to parse response: ${parseError.message}`;
+      }
+      
+      console.error(`Webhook responded with status: ${response.status}`, responseContent);
       throw new Error(`Webhook responded with status: ${response.status}`);
     }
     
-    const responseData = await response.json();
-    console.log('Webhook response received:', responseData);
+    let responseData;
+    try {
+      responseData = await response.json();
+      console.log('Webhook response received:', responseData);
+    } catch (error) {
+      // Handle non-JSON responses
+      const text = await response.text();
+      console.warn('Webhook returned non-JSON response:', text);
+      responseData = { success: true, message: 'Request processed but response was not JSON' };
+    }
+    
     return responseData;
   } catch (error) {
     console.error('Error sending data to webhook:', error);
