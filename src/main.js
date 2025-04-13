@@ -32,22 +32,35 @@ const isDevelopmentMode =
     window.location.hostname === 'localhost' || 
     window.location.hostname === '127.0.0.1';
 
-console.log('=== APP INITIALIZATION ===');
-console.log('Development mode:', isDevelopmentMode);
-console.log('Current URL:', window.location.href);
-console.log('Hostname:', window.location.hostname);
-console.log('=========================');
+// Enable debug logging based on development mode and URL param
+const debugParam = new URLSearchParams(window.location.search).get('debug');
+const isDebugMode = isDevelopmentMode || debugParam === 'true';
+
+// Custom debug logger that only logs in debug mode
+const debug = {
+    log: (...args) => isDebugMode && console.log(...args),
+    warn: (...args) => isDebugMode && console.warn(...args),
+    error: (...args) => console.error(...args), // Always show errors
+    info: (...args) => isDebugMode && console.info(...args)
+};
+
+debug.log('=== APP INITIALIZATION ===');
+debug.log('Development mode:', isDevelopmentMode);
+debug.log('Debug mode:', isDebugMode);
+debug.log('Current URL:', window.location.href);
+debug.log('Hostname:', window.location.hostname);
+debug.log('=========================');
 
 document.addEventListener('DOMContentLoaded', () => {
     // Debug environment information
-    console.log('======= ENVIRONMENT DEBUG INFO =======');
-    console.log('Vite Environment Variables:');
-    console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
-    console.log('VITE_SUPABASE_ANON_KEY exists:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
-    console.log('Current URL:', window.location.href);
-    console.log('Environment Parameter:', new URLSearchParams(window.location.search).get('env'));
-    console.log('ID Parameter:', new URLSearchParams(window.location.search).get('id'));
-    console.log('======================================');
+    debug.log('======= ENVIRONMENT DEBUG INFO =======');
+    debug.log('Vite Environment Variables:');
+    debug.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
+    debug.log('VITE_SUPABASE_ANON_KEY exists:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
+    debug.log('Current URL:', window.location.href);
+    debug.log('Environment Parameter:', new URLSearchParams(window.location.search).get('env'));
+    debug.log('ID Parameter:', new URLSearchParams(window.location.search).get('id'));
+    debug.log('======================================');
     
     // Test database connection on page load
     (async function() {
@@ -532,6 +545,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Generate a new submission ID
             const submissionId = generateSubmissionId();
             
+            // Calculate yesterday's date in YYYY-MM-DD format
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const formattedDate = yesterday.toISOString().split('T')[0]; // Gets YYYY-MM-DD format
+            
+            console.log('Using date for submission:', formattedDate);
+            
             // Update the URL with the submission ID instead of using localStorage
             currentSubmissionId = submissionId;
             const newUrl = new URL(window.location);
@@ -553,7 +573,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 email: formData.email,
                 sources: formData.sources || [],
                 topics: formData.topics || [],
-                language: formData.language
+                language: formData.language,
+                date: formattedDate
             };
             
             // 1. Save form submission to Supabase
@@ -566,7 +587,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Send data to webhook
             const webhookData = {
                 ...formData,
-                submissionId: submissionId
+                submissionId: submissionId,
+                date: formattedDate
             };
             const webhookResponse = await sendFormDataToWebhook(webhookData);
             
@@ -731,21 +753,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add click handler to close dropdowns when clicking outside
     document.addEventListener('click', function() {
         closeAllDropdowns();
-    });
-
-    // Listen for delete feed events
-    window.addEventListener('delete-feed', function(e) {
-        console.log('Delete feed event received:', e.detail);
-        if (e.detail && e.detail.feedId) {
-            if (e.detail.isSample) {
-                console.log('Skipping handleDeleteFeed for sample data');
-                // Already removed from DOM in the component
-            } else {
-                handleDeleteFeed(e.detail.feedId);
-            }
-        } else {
-            console.error('Delete feed event missing feedId:', e.detail);
-        }
     });
 
     // Handle check empty state event
@@ -1062,31 +1069,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Initialize the app
+    // MAIN INITIALIZATION
     function init() {
-        setupAccessibilityAnnouncements();
-        setupTagKeyboardNavigation();
+        console.log('Running main initialization...');
+        
+        // Refresh feed container references
+        const newsContainer = document.getElementById('news-container');
+        const emptyState = document.getElementById('empty-state');
+        
+        // Initialize checkboxes for topic selection
         initializeCheckboxes();
+        
+        // Setup keyboard navigation
+        setupTagKeyboardNavigation();
+        
+        // Setup accessibility features
+        setupAccessibilityAnnouncements();
+        
+        // Setup real-time subscription
+        setupRealTimeSubscription();
+
+        // No need to re-register the delete-feed event listener here
+        // It's already registered outside this function
+        
+        // Show sample data button logic
         
         // Add global click listener to close all dropdowns when clicking outside
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.news-menu-btn')) {
                 closeAllDropdowns();
-            }
-        });
-        
-        // Listen for delete feed events
-        window.addEventListener('delete-feed', function(e) {
-            console.log('Delete feed event received:', e.detail);
-            if (e.detail && e.detail.feedId) {
-                if (e.detail.isSample) {
-                    console.log('Skipping handleDeleteFeed for sample data');
-                    // Already removed from DOM in the component
-                } else {
-                    handleDeleteFeed(e.detail.feedId);
-                }
-            } else {
-                console.error('Delete feed event missing feedId:', e.detail);
             }
         });
         
@@ -1153,12 +1164,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initial loading of news feeds
         console.log('DEBUG: init - Loading initial feeds');
         loadNewsFeeds();
-
-        // Setup real-time subscription for updates regardless of submission ID
-        console.log('DEBUG: init - Setting up real-time subscription');
-        setupRealTimeSubscription();
     }
     
     // Start the app
     init();
+
+    // Setup clean up when page is unloaded
+    window.addEventListener('beforeunload', function() {
+        debug.log('Page unloading, cleaning up resources...');
+        
+        // Unsubscribe from real-time updates
+        if (activeSubscription) {
+            debug.log('Unsubscribing from real-time updates');
+            activeSubscription.unsubscribe();
+            activeSubscription = null;
+        }
+        
+        // Clear any timeouts or intervals if needed
+        // ...
+    });
 }); 

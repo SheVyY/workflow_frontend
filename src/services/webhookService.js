@@ -17,15 +17,26 @@ function formatUrl(url) {
   try {
     // Extract the domain - similar to cleaning process in FormHandler.js
     let domain = url.toLowerCase().trim();
+    
+    // Check if domain already has a protocol
+    const hasProtocol = domain.startsWith('http://') || domain.startsWith('https://');
+    
+    // Remove protocol if it exists
     domain = domain.replace(/^(https?:\/\/)?(www\.)?/, '');
+    
+    // Extract domain (remove path, query params)
     domain = domain.split('/')[0];
     domain = domain.split('?')[0];
     
-    // For logging
-    console.log(`URL transformation: "${url}" → "https://www.${domain}"`);
+    // Some popular sites need special handling for subdomains
+    const noWwwSites = ['github.com', 'twitter.com', 'reddit.com', 'medium.com'];
+    const needsWww = !noWwwSites.some(site => domain.endsWith(site));
     
-    // Add https:// prefix
-    return `https://www.${domain}`;
+    // For logging
+    console.log(`URL transformation: "${url}" → "https://${needsWww ? 'www.' : ''}${domain}"`);
+    
+    // Add https:// prefix with or without www as appropriate
+    return `https://${needsWww ? 'www.' : ''}${domain}`;
   } catch (error) {
     console.error('Error formatting URL:', error);
     return url; // Return original URL if there's an error
@@ -42,15 +53,19 @@ export async function sendFormDataToWebhook(formData) {
     console.log('Preparing webhook payload for data:', {
       email: formData.email, 
       sourcesCount: formData.sources?.length || 0,
-      submissionId: formData.submissionId
+      submissionId: formData.submissionId,
+      date: formData.date
     });
     
-    // Calculate yesterday's date in YYYY-MM-DD format
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const formattedDate = yesterday.toISOString().split('T')[0]; // Gets YYYY-MM-DD format
+    // Use the date from formData or calculate yesterday's date as fallback
+    let formattedDate = formData.date;
+    if (!formattedDate) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      formattedDate = yesterday.toISOString().split('T')[0]; // Gets YYYY-MM-DD format
+    }
     
-    console.log('Adding date to webhook payload:', formattedDate, '(yesterday)');
+    console.log('Using date in webhook payload:', formattedDate);
     
     // Format the data for the webhook payload
     const webhookPayload = {
@@ -63,7 +78,7 @@ export async function sendFormDataToWebhook(formData) {
         topics: formData.topics,
         language: formData.language,
         schedule: '8AM_UTC', // Default schedule
-        date: formattedDate, // Add yesterday's date
+        date: formattedDate, // Use the provided date
         submission_id: formData.submissionId // Add submission ID for tracking
       },
       metadata: {
@@ -84,37 +99,49 @@ export async function sendFormDataToWebhook(formData) {
       body: JSON.stringify(webhookPayload)
     });
     
-    if (!response.ok) {
-      // Try to get response content
-      let responseContent;
-      try {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          responseContent = await response.json();
-        } else {
-          responseContent = await response.text();
-          console.warn('Webhook returned non-JSON response:', responseContent);
-        }
-      } catch (parseError) {
-        responseContent = `Failed to parse response: ${parseError.message}`;
-      }
-      
-      console.error(`Webhook responded with status: ${response.status}`, responseContent);
-      throw new Error(`Webhook responded with status: ${response.status}`);
-    }
+    // Read the response body once and store it
+    let responseBody;
+    let responseData = null;
+    const contentType = response.headers.get('content-type');
     
-    let responseData;
     try {
-      responseData = await response.json();
-      console.log('Webhook response received:', responseData);
-    } catch (error) {
-      // Handle non-JSON responses
-      const text = await response.text();
-      console.warn('Webhook returned non-JSON response:', text);
-      responseData = { success: true, message: 'Request processed but response was not JSON' };
+      // Check content type to determine how to parse
+      if (contentType && contentType.includes('application/json')) {
+        responseBody = await response.json();
+      } else {
+        responseBody = await response.text();
+      }
+    } catch (parseError) {
+      console.warn('Error parsing response:', parseError);
+      responseBody = null;
     }
     
-    return responseData;
+    // Now process the response based on status
+    if (!response.ok) {
+      console.error(`Webhook responded with status: ${response.status}`, responseBody);
+      
+      // For error responses, still return something to the caller
+      // to indicate that the request was sent but had an error response
+      return { 
+        error: true, 
+        status: response.status,
+        message: `Webhook responded with status: ${response.status}`
+      };
+    }
+    
+    // For successful responses with JSON data
+    if (responseBody && typeof responseBody === 'object') {
+      console.log('Webhook response received:', responseBody);
+      return responseBody;
+    }
+    
+    // For successful non-JSON responses
+    if (responseBody) {
+      console.log('Webhook returned non-JSON response:', typeof responseBody === 'string' ? responseBody.substring(0, 100) + '...' : responseBody);
+    }
+    
+    // Default response if we couldn't parse the body
+    return { success: true, message: 'Request processed successfully' };
   } catch (error) {
     console.error('Error sending data to webhook:', error);
     return null;
