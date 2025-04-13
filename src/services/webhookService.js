@@ -7,6 +7,22 @@
 const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL || 'http://localhost:3001/webhook';
 
 /**
+ * Format URL to ensure it has https:// prefix
+ * @param {string} url - The URL to format
+ * @returns {string} - Formatted URL with https:// prefix
+ */
+function formatUrl(url) {
+  // Extract the domain - similar to cleaning process in FormHandler.js
+  let domain = url.toLowerCase().trim();
+  domain = domain.replace(/^(https?:\/\/)?(www\.)?/, '');
+  domain = domain.split('/')[0];
+  domain = domain.split('?')[0];
+  
+  // Add https:// prefix
+  return `https://www.${domain}`;
+}
+
+/**
  * Send form data to webhook endpoint
  * @param {Object} formData - The form data to send
  * @returns {Promise<Object|null>} - The webhook response or null if error
@@ -18,7 +34,7 @@ export async function sendFormDataToWebhook(formData) {
       subscription: {
         email: formData.email,
         sources: formData.sources.map(source => ({
-          url: source,
+          url: formatUrl(source),
           method: 'GET'
         })),
         topics: formData.topics,
