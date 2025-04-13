@@ -547,8 +547,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show loading placeholder while waiting for feeds
             showLoadingPlaceholder();
             
+            // Add submissionId to formData
+            formData.submissionId = submissionId;
+            // Set languages field to the single language value (not an array)
+            formData.languages = formData.language;
+            
             // 1. Save form submission to Supabase
-            const submission = await saveFormSubmission(formData, submissionId);
+            const submission = await saveFormSubmission(formData);
             
             if (!submission) {
                 throw new Error('Failed to save form submission to database');
