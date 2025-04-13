@@ -252,12 +252,11 @@ export function generateSubmissionId() {
 
 /**
  * Save form submission to database
- * @param {Object} formData - Form data from the form
- * @param {string} submissionId - Unique ID for this submission
+ * @param {Object} formData - Form data from the form (including submissionId)
  * @returns {Promise<Object|null>} - The created submission or null
  */
-export async function saveFormSubmission(formData, submissionId) {
-  return formSupabaseService.saveFormSubmission(formData, submissionId);
+export async function saveFormSubmission(formData) {
+  return formSupabaseService.saveFormSubmission(formData);
 }
 
 /**
