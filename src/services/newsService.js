@@ -174,7 +174,7 @@ export async function getLatestNewsFeed() {
  */
 export async function fetchSampleNewsData() {
   try {
-    // Try to get the sample news feed from Supabase (using a known test submission ID)
+    // Try to get the sample news feed from Supabase (using a known test name)
     const { data, error } = await supabase
       .from(getTableName('news_feeds'))
       .select(`
@@ -187,7 +187,7 @@ export async function fetchSampleNewsData() {
           source_url
         )
       `)
-      .eq('submission_id', 'test-submission-1')
+      .eq('title', 'News Summary')
       .limit(1)
       .single();
     
@@ -328,7 +328,6 @@ export async function fetchAllDevFeeds() {
       .from('dev_news_feeds')
       .select(`
         id,
-        submission_id,
         title,
         date,
         dev_news_items (
@@ -408,7 +407,6 @@ export async function fetchLatestFeeds(limit = 10) {
       .from(tableName)
       .select(`
         id,
-        submission_id,
         title,
         date,
         ${itemsTableName} (
@@ -578,7 +576,6 @@ export async function getFeedById(feedId) {
       .from(getTableName('news_feeds'))
       .select(`
         id,
-        submission_id,
         title,
         date,
         ${getTableName('news_items')} (

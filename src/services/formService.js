@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
  * @returns {string} - Unique submission ID
  */
 export function generateSubmissionId() {
-  return `sub-${uuidv4()}`;
+  return uuidv4();
 }
 
 // Helper function to get correct table name based on environment
@@ -48,18 +48,39 @@ function getTableName(baseTable) {
  */
 export async function saveFormSubmission(formData) {
   try {
+    console.log('Saving form submission with data:', {
+      email: formData.email,
+      sources_count: formData.sources?.length || 0,
+      topics_count: formData.topics?.length || 0,
+      language: formData.language,
+      date: formData.date
+    });
+    
+    const tableName = getTableName('form_submissions');
+    console.log('Using table:', tableName);
+    
+    // Set up payload with all required fields
+    const payload = {
+      email: formData.email,
+      sources: formData.sources || [],
+      topics: formData.topics || [],
+      language: formData.language || '',
+      date: formData.date || new Date().toISOString().split('T')[0] // Fallback to today if not provided
+    };
+    
+    console.log('Insert payload:', payload);
+    
     const { data, error } = await supabase
-      .from(getTableName('form_submissions'))
-      .insert({
-        submission_id: formData.submissionId,
-        email: formData.email,
-        sources: formData.sources || [],
-        topics: formData.topics || [],
-        languages: formData.languages || []
-      })
+      .from(tableName)
+      .insert(payload)
       .select();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error saving form submission:', error);
+      throw error;
+    }
+    
+    console.log('Form submission saved successfully:', data);
     return data;
   } catch (error) {
     console.error('Error saving form submission:', error);
@@ -68,20 +89,78 @@ export async function saveFormSubmission(formData) {
 }
 
 /**
- * Get feeds by submission ID
- * @param {string} submissionId - The submission ID to fetch feeds for
- * @returns {Promise<Array>} - Array of feeds matching the submission ID
+ * Get feeds by form submission ID
+ * @param {string} formSubmissionId - The form submission database ID to fetch feeds for
+ * @returns {Promise<Array>} - Array of feeds matching the form submission ID
  */
-export async function getFeedsBySubmissionId(submissionId) {
+export async function getFeedsBySubmissionId(formSubmissionId) {
   try {
-    console.log('Fetching feeds for submission ID:', submissionId);
+    console.log('Fetching feeds for form submission ID:', formSubmissionId);
+    
+    // Handle legacy format IDs (with sub- prefix)
+    if (formSubmissionId && formSubmissionId.startsWith('sub-')) {
+      console.warn('Legacy submission ID format detected. Please update your code to use UUID format.');
+      
+      // Query by submission_id for backward compatibility
+      console.log('Falling back to legacy query by submission_id');
+      
+      const { data: legacyData, error: legacyError } = await supabase
+        .from(getTableName('news_feeds'))
+        .select(`
+          id,
+          form_submission_id,
+          title,
+          date,
+          ${getTableName('news_items')} (
+            id,
+            title,
+            content,
+            source,
+            source_url,
+            category,
+            summary
+          )
+        `)
+        .eq('submission_id', formSubmissionId)
+        .order('date', { ascending: false });
+      
+      if (legacyError) {
+        console.error('Error fetching feeds with legacy ID:', legacyError);
+      } else if (legacyData && legacyData.length > 0) {
+        console.log('Successfully retrieved feeds using legacy submission_id');
+        
+        // Process and return the data
+        const feedsWithCategory = legacyData.map(feed => {
+          const itemsKey = getTableName('news_items');
+          const newsItems = feed[itemsKey] || [];
+          let primaryCategory = 'News Summary';
+          
+          if (newsItems.length > 0) {
+            primaryCategory = newsItems[0].category || primaryCategory;
+          }
+          
+          return {
+            ...feed,
+            news_items: newsItems,
+            category: primaryCategory
+          };
+        });
+        
+        return feedsWithCategory;
+      }
+      
+      // If we reach here, either there was an error or no feeds found with legacy ID
+      console.log('No feeds found with legacy ID format, will try UUID format');
+    }
+    
     console.log('Using table:', getTableName('news_feeds'));
     
+    // Standard query using form_submission_id (UUID format)
     const { data, error } = await supabase
       .from(getTableName('news_feeds'))
       .select(`
         id,
-        submission_id,
+        form_submission_id,
         title,
         date,
         ${getTableName('news_items')} (
@@ -90,10 +169,11 @@ export async function getFeedsBySubmissionId(submissionId) {
           content,
           source,
           source_url,
-          category
+          category,
+          summary
         )
       `)
-      .eq('submission_id', submissionId)
+      .eq('form_submission_id', formSubmissionId)
       .order('date', { ascending: false });
     
     if (error) {
@@ -138,15 +218,15 @@ export async function getFeedsBySubmissionId(submissionId) {
 
 /**
  * Get form submission by ID
- * @param {string} submissionId - The submission ID to fetch
+ * @param {string} id - The database ID to fetch
  * @returns {Promise<Object|null>} - The submission or null
  */
-export async function getFormSubmission(submissionId) {
+export async function getFormSubmission(id) {
   try {
     const { data, error } = await supabase
       .from(getTableName('form_submissions'))
       .select('*')
-      .eq('submission_id', submissionId)
+      .eq('id', id)
       .single();
     
     if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "No rows returned" error

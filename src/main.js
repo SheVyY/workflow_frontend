@@ -542,9 +542,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingState(startButton);
         
         try {
-            // Generate a new submission ID
-            const submissionId = generateSubmissionId();
-            
             // Calculate yesterday's date in YYYY-MM-DD format
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
@@ -553,9 +550,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Using date for submission:', formattedDate);
             
             // Update the URL with the submission ID instead of using localStorage
-            currentSubmissionId = submissionId;
+            currentSubmissionId = generateSubmissionId();
             const newUrl = new URL(window.location);
-            newUrl.searchParams.set('id', submissionId);
+            newUrl.searchParams.set('id', currentSubmissionId);
             window.history.pushState({}, '', newUrl);
             
             // Disable preview button while waiting for real data
@@ -569,7 +566,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Create a complete form data object with the correct field structure
             const submissionData = {
-                submissionId: submissionId,
                 email: formData.email,
                 sources: formData.sources || [],
                 topics: formData.topics || [],
@@ -584,11 +580,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Failed to save form submission to database');
             }
             
+            // Get the submission ID from the response
+            const submissionId = submission[0]?.id;
+            console.log('Form submission created with ID:', submissionId);
+            
             // 2. Send data to webhook
             const webhookData = {
                 ...formData,
-                submissionId: submissionId,
-                date: formattedDate
+                date: formattedDate,
+                submissionId: submissionId // Pass the submission ID to webhookService
             };
             const webhookResponse = await sendFormDataToWebhook(webhookData);
             
@@ -611,62 +611,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Subscribe to real-time updates
-    function setupRealTimeSubscription() {
-        // Unsubscribe if we already have a subscription
+    // Subscribe to real-time updates for news feeds
+    function subscribeToNewsFeedsUpdates() {
+        console.log('Setting up real-time subscription for news feeds');
+        
         if (activeSubscription) {
+            console.log('Removing existing subscription before creating a new one');
             activeSubscription.unsubscribe();
         }
         
-        console.log('DEBUG: setupRealTimeSubscription - Setting up Realtime subscription');
-        
-        // Always reload feeds when changes occur, regardless of environment
         activeSubscription = subscribeToNewsFeeds(
-            // Handle new feed insertion
+            // On insert
             (newFeed) => {
-                console.log('DEBUG: Realtime - New feed inserted:', newFeed);
+                console.log('Real-time: New feed inserted:', newFeed);
                 
-                // If we have a specific ID in the URL, only reload if it matches
+                // Only update the UI if we're on the right page for this feed
                 if (currentSubmissionId) {
-                    if (newFeed.submission_id === currentSubmissionId) {
-                        console.log('DEBUG: Realtime - Reloading feeds for matching submission ID');
+                    if (newFeed.form_submission_id === currentSubmissionId) {
+                        showToast('New data received!', 'success');
+                        
+                        // Reset cache and reload feeds
                         loadNewsFeeds();
+                    } else {
+                        console.log(`Feed ${newFeed.id} is for a different submission, ignoring`);
                     }
                 } else {
-                    // No specific ID, always reload feeds
-                    console.log('DEBUG: Realtime - Reloading all feeds');
                     loadNewsFeeds();
                 }
             },
-            // Handle feed deletion
+            // On delete
             (deletedFeed) => {
-                console.log('DEBUG: Realtime - Feed deleted:', deletedFeed);
+                console.log('Real-time: Feed deleted:', deletedFeed);
                 
-                // In development mode, we just need to reload all feeds
-                // This ensures proper UI update by refreshing the data
-                if (!currentSubmissionId) {
-                    console.log('DEBUG: Realtime - Reloading all feeds after deletion');
-                    loadNewsFeeds();
-                    return;
-                }
-                
-                // If we have a specific submission ID, only reload if it matches
-                if (currentSubmissionId === deletedFeed.submission_id) {
-                    console.log('DEBUG: Realtime - Reloading feeds after deletion for matching submission ID');
-                    loadNewsFeeds();
-                    return;
-                }
-                
-                // For other cases, try to remove the specific feed from UI
-                console.log('DEBUG: Realtime - Removing specific feed from UI:', deletedFeed.id);
-                const newsItem = document.querySelector(`.news-item[data-feed-id="${deletedFeed.id}"]`);
-                if (newsItem && newsItem.parentNode) {
-                    newsItem.parentNode.removeChild(newsItem);
-                    toggleEmptyState(emptyState, newsContainer);
-                    console.log('DEBUG: Realtime - Feed element removed from UI');
-                } else {
-                    console.log('DEBUG: Realtime - Could not find feed element in UI, reloading all feeds');
-                    loadNewsFeeds();
+                // Check if we're currently viewing this feed
+                if (currentSubmissionId === deletedFeed.form_submission_id) {
+                    showToast('This news feed has been deleted', 'warning');
+                    
+                    // Remove the feed from the display
+                    const feedElement = document.querySelector(`.news-feed[data-id="${deletedFeed.id}"]`);
+                    if (feedElement) {
+                        feedElement.remove();
+                    }
+                    
+                    // Check if there are any feeds left
+                    const remainingFeeds = document.querySelectorAll('.news-feed');
+                    if (remainingFeeds.length === 0) {
+                        toggleEmptyState(true);
+                    }
                 }
             }
         );
@@ -1087,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupAccessibilityAnnouncements();
         
         // Setup real-time subscription
-        setupRealTimeSubscription();
+        subscribeToNewsFeedsUpdates();
 
         // No need to re-register the delete-feed event listener here
         // It's already registered outside this function

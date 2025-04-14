@@ -6,6 +6,9 @@
 // Get webhook URL from environment variables 
 const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL || 'http://localhost:3001/webhook';
 
+// Import Supabase client for the workaround solution
+import supabase from './supabase.js';
+
 /**
  * Format URL to ensure it has https:// prefix
  * @param {string} url - The URL to format
@@ -52,9 +55,7 @@ export async function sendFormDataToWebhook(formData) {
   try {
     console.log('Preparing webhook payload for data:', {
       email: formData.email, 
-      sourcesCount: formData.sources?.length || 0,
-      submissionId: formData.submissionId,
-      date: formData.date
+      sourcesCount: formData.sources?.length || 0
     });
     
     // Use the date from formData or calculate yesterday's date as fallback
@@ -66,6 +67,75 @@ export async function sendFormDataToWebhook(formData) {
     }
     
     console.log('Using date in webhook payload:', formattedDate);
+    
+    // =====================================================================
+    // IMPROVED APPROACH: Use existing submission ID or create new records
+    // =====================================================================
+    let submissionDatabaseId = formData.submissionId || null;
+    let feedDatabaseId = null;
+    
+    try {
+      // Determine if we're using dev tables
+      const isDev = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1' ||
+                    (new URLSearchParams(window.location.search).get('env') === 'dev');
+      
+      const submissionsTable = isDev ? 'dev_form_submissions' : 'form_submissions';
+      const feedsTable = isDev ? 'dev_news_feeds' : 'news_feeds';
+      
+      // If we don't have a submission ID, we need to create one
+      if (!submissionDatabaseId) {
+        console.log(`No existing submission ID provided. Creating new ${submissionsTable} record`);
+        
+        const { data: submissionData, error: submissionError } = await supabase
+          .from(submissionsTable)
+          .insert({
+            email: formData.email,
+            sources: formData.sources || [],
+            topics: formData.topics || [],
+            language: formData.language || '',
+            date: formattedDate
+          })
+          .select();
+        
+        if (submissionError) {
+          console.error(`Error creating ${submissionsTable} record:`, submissionError);
+          throw submissionError;
+        }
+        
+        // Store the Supabase-generated ID
+        submissionDatabaseId = submissionData[0].id;
+        console.log(`Created new submission with database ID: ${submissionDatabaseId}`);
+      } else {
+        console.log(`Using existing submission ID: ${submissionDatabaseId}`);
+      }
+      
+      // Create the feed record using the submission's ID as foreign key
+      console.log(`Creating ${feedsTable} record with form_submission_id: ${submissionDatabaseId}`);
+      
+      const { data: feedData, error: feedError } = await supabase
+        .from(feedsTable)
+        .insert({
+          title: `News Feed for ${formData.email}`,
+          date: new Date().toISOString(),
+          // Use the submission's native ID
+          form_submission_id: submissionDatabaseId
+        })
+        .select();
+      
+      if (feedError) {
+        console.error(`Error creating ${feedsTable} record:`, feedError);
+      } else if (feedData && feedData.length > 0) {
+        // Store the feed's Supabase-generated ID for the webhook
+        feedDatabaseId = feedData[0].id;
+        console.log(`Created feed with database ID: ${feedDatabaseId}`);
+      }
+    } catch (dbError) {
+      console.error('Database operation error:', dbError);
+      // Continue with the webhook process even if database operations fail
+    }
+    // End of improved approach
+    // =====================================================================
     
     // Format the data for the webhook payload
     const webhookPayload = {
@@ -79,7 +149,9 @@ export async function sendFormDataToWebhook(formData) {
         language: formData.language,
         schedule: '8AM_UTC', // Default schedule
         date: formattedDate, // Use the provided date
-        submission_id: formData.submissionId // Add submission ID for tracking
+        // Include the native database IDs for direct use in downstream systems
+        db_submission_id: submissionDatabaseId,
+        db_feed_id: feedDatabaseId
       },
       metadata: {
         timestamp: new Date().toISOString(),

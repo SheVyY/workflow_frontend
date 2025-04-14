@@ -199,7 +199,7 @@ function generateContent(title, category) {
 }
 
 // Generate a news feed with multiple items
-function generateNewsFeed(submissionId, category = null) {
+function generateNewsFeed(category = null) {
   // Randomly select category if not provided
   const feedCategory = category || CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
   
@@ -228,7 +228,6 @@ function generateNewsFeed(submissionId, category = null) {
   }
   
   return {
-    submission_id: submissionId,
     category: feedCategory,
     title: 'News Summary',
     date: new Date().toISOString(),
@@ -246,25 +245,46 @@ const rl = readline.createInterface({
 async function insertTestData() {
   console.log('🔌 Connected to Supabase:', supabaseUrl);
   
-  rl.question('Enter a submission ID (or leave blank to generate one): ', async (submissionId) => {
-    // Generate a random submission ID if not provided
-    const feedSubmissionId = submissionId || `test-${Date.now().toString(36)}`;
-    console.log(`Using submission ID: ${feedSubmissionId}`);
+  rl.question('Enter email for the test subscription: ', async (email) => {
+    const testEmail = email || `test-${Date.now().toString(36)}@example.com`;
+    console.log(`Using test email: ${testEmail}`);
     
     rl.question('How many feeds do you want to generate? (default: 3): ', async (feedCountInput) => {
       const feedCount = parseInt(feedCountInput) || 3;
       console.log(`Generating ${feedCount} feeds...`);
       
+      // First create a form submission to get the ID
+      console.log('Creating form submission record...');
+      const { data: submissionData, error: submissionError } = await supabase
+        .from('form_submissions')
+        .insert({
+          email: testEmail,
+          sources: ['techcrunch.com', 'reuters.com', 'theverge.com'],
+          topics: ['technology', 'business', 'science'],
+          language: 'english',
+          date: new Date().toISOString().split('T')[0]
+        })
+        .select();
+      
+      if (submissionError) {
+        console.error('Error creating form submission:', submissionError);
+        rl.close();
+        return;
+      }
+      
+      const submissionId = submissionData[0].id;
+      console.log(`✅ Created form submission with ID: ${submissionId}`);
+      
       // Generate feeds
       for (let i = 0; i < feedCount; i++) {
         const categoryIndex = i % CATEGORIES.length;
-        const feed = generateNewsFeed(feedSubmissionId, CATEGORIES[categoryIndex]);
+        const feed = generateNewsFeed(CATEGORIES[categoryIndex]);
         
         // Insert the feed
         const { data: feedData, error: feedError } = await supabase
           .from('news_feeds')
           .insert({
-            submission_id: feed.submission_id,
+            form_submission_id: submissionId,
             title: 'News Summary',
             date: feed.date
           })
@@ -302,10 +322,10 @@ async function insertTestData() {
       }
       
       console.log('\n🎉 Test data generation complete!');
-      console.log(`To view the feeds, use submission ID: ${feedSubmissionId}`);
+      console.log(`To view the feeds, use form submission ID: ${submissionId}`);
       console.log('You can now open your application and see the test feeds.');
       console.log(`\nOpen this link to automatically load the test data:`);
-      console.log(`http://localhost:5173/?id=${feedSubmissionId}`);
+      console.log(`http://localhost:5173/?id=${submissionId}`);
       
       rl.close();
     });

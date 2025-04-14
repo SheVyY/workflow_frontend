@@ -78,7 +78,7 @@ export async function checkSampleDataExists() {
     const { data, error } = await supabase
       .from('news_feeds')
       .select('id')
-      .eq('submission_id', 'test-submission-1')
+      .eq('form_submission_id', 'test-submission-1')
       .limit(1);
     
     if (error) throw error;
@@ -107,7 +107,6 @@ export async function insertSampleData() {
     const { data: submission, error: submissionError } = await supabase
       .from('form_submissions')
       .insert({
-        submission_id: 'test-submission-1',
         sources: ['techcrunch.com', 'reuters.com'],
         topics: ['technology', 'finance'],
         language: 'english',
@@ -122,7 +121,7 @@ export async function insertSampleData() {
     const { data: feed, error: feedError } = await supabase
       .from('news_feeds')
       .insert({
-        submission_id: 'test-submission-1',
+        form_submission_id: submission.id,
         title: 'News Summary',
         date: new Date().toISOString().split('T')[0]
       })
