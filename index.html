@@ -136,7 +136,7 @@
                 </div>
                 <h3 class="empty-state-title">No News Items Yet</h3>
                 <p class="empty-state-message">Waiting for news data to be delivered. Click "Show Preview" to see how it will look.</p>
-                <button id="empty-preview-btn" class="preview-btn">Show Preview</button>
+                <button id="empty-preview-btn" class="preview-btn" onclick="console.log('Preview button clicked inline'); document.dispatchEvent(new CustomEvent('show-preview-clicked'));">Show Preview</button>
             </div>
             
             <div class="news-container" id="news-container">
@@ -146,5 +146,150 @@
     </div>
 
     <script type="module" src="src/main.js"></script>
+    <script>
+      // Fix for Show Preview button - executes after main.js
+      setTimeout(function() {
+        console.log('Running Show Preview button fix...');
+        
+        // Get the button
+        const previewButton = document.getElementById('empty-preview-btn');
+        
+        if (previewButton) {
+          console.log('Found Show Preview button, resetting state...');
+          
+          // Remove disabled attribute and class
+          previewButton.disabled = false;
+          previewButton.classList.remove('disabled');
+          
+          // Replace with a new button to ensure no stale event listeners
+          const newButton = document.createElement('button');
+          newButton.id = 'empty-preview-btn';
+          newButton.className = 'preview-btn';
+          newButton.textContent = 'Show Preview';
+          
+          // Add direct inline event handler
+          newButton.onclick = function() {
+            console.log('Show Preview button clicked');
+            
+            // Create simple preview
+            const container = document.getElementById('news-container');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (container && emptyState) {
+              // Hide empty state
+              emptyState.style.display = 'none';
+              
+              // Clear and show container
+              container.innerHTML = generateSampleNewsHtml();
+              
+              // Add clear button
+              const buttonContainer = document.createElement('div');
+              buttonContainer.className = 'sample-controls';
+              buttonContainer.style.display = 'flex';
+              
+              const clearButton = document.createElement('button');
+              clearButton.className = 'clear-samples-btn';
+              clearButton.textContent = 'Clear All Samples';
+              clearButton.onclick = function() {
+                // Simple clear function that doesn't use arguments.callee
+                // Find all sample news items
+                const sampleItems = document.querySelectorAll('.news-item[data-is-sample="true"]');
+                let count = 0;
+                
+                // Remove each sample item
+                sampleItems.forEach(item => {
+                  if (item.parentNode) {
+                    item.parentNode.removeChild(item);
+                    count++;
+                  }
+                });
+                
+                // Remove the button container
+                buttonContainer.parentNode.removeChild(buttonContainer);
+                
+                // Show empty state
+                container.style.display = 'none';
+                emptyState.style.display = 'flex';
+                
+                // Show toast
+                const toast = document.createElement('div');
+                toast.className = 'toast success';
+                toast.textContent = `Cleared ${count} sample feeds`;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.classList.add('show'), 10);
+                setTimeout(() => {
+                  toast.classList.remove('show');
+                  setTimeout(() => toast.remove(), 300);
+                }, 3000);
+              };
+              
+              buttonContainer.appendChild(clearButton);
+              container.appendChild(buttonContainer);
+              
+              // Show container
+              container.style.display = 'flex';
+            }
+          };
+          
+          // Replace the old button with the new one
+          if (previewButton.parentNode) {
+            previewButton.parentNode.replaceChild(newButton, previewButton);
+            console.log('Button replaced successfully');
+          }
+        }
+      }, 1000); // Wait 1 second after page load
+
+      // Function to generate a sample news feed
+      function generateSampleNewsHtml() {
+          // Generate a random sample ID
+          const sampleId = 'sample-' + Math.floor(Math.random() * 10000);
+          
+          return `
+              <div class="news-item" data-feed-id="${sampleId}" data-is-sample="true">
+                  <div class="news-title">
+                      <h2>Sample News Feed - ${new Date().toLocaleDateString()}</h2>
+                      <div class="news-actions">
+                          <button class="download-csv-btn" data-feed-id="${sampleId}">Download CSV</button>
+                      </div>
+                  </div>
+                  <div class="news-stories">
+                      <div class="news-story">
+                          <div class="topic-badges">
+                              <span class="topic-badge">Technology</span>
+                          </div>
+                          <h3>AI Advancements Set to Transform Healthcare Industry</h3>
+                          <p>New developments in artificial intelligence are promising to revolutionize healthcare diagnostics and treatment plans, experts say. Several leading hospitals have begun implementing AI systems that can analyze patient data and suggest personalized treatment options.</p>
+                          <div class="story-footer">
+                              <span class="source-badge">TechNews</span>
+                              <a href="https://example.com/tech-news" class="read-more" target="_blank" rel="noopener noreferrer">Read more</a>
+                          </div>
+                      </div>
+                      <div class="news-story">
+                          <div class="topic-badges">
+                              <span class="topic-badge">Finance</span>
+                          </div>
+                          <h3>Global Markets Respond to New Economic Policies</h3>
+                          <p>Stock markets worldwide showed positive trends following announcements of new economic stimulus packages in several major economies. Analysts predict continued growth through the next quarter as these policies take effect.</p>
+                          <div class="story-footer">
+                              <span class="source-badge">Financial Times</span>
+                              <a href="https://example.com/financial-news" class="read-more" target="_blank" rel="noopener noreferrer">Read more</a>
+                          </div>
+                      </div>
+                      <div class="news-story">
+                          <div class="topic-badges">
+                              <span class="topic-badge">Health</span>
+                          </div>
+                          <h3>New Research Highlights Benefits of Mediterranean Diet</h3>
+                          <p>A comprehensive 10-year study confirms that adhering to a Mediterranean diet can significantly reduce the risk of heart disease and improve longevity. The research followed over 10,000 participants across different age groups.</p>
+                          <div class="story-footer">
+                              <span class="source-badge">Health Journal</span>
+                              <a href="https://example.com/health-news" class="read-more" target="_blank" rel="noopener noreferrer">Read more</a>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          `;
+      }
+    </script>
 </body>
 </html> 

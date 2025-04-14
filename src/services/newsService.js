@@ -220,9 +220,9 @@ export async function fetchSampleNewsData() {
  */
 export async function fetchSampleCategories() {
   try {
-    console.log('Fetching sample data from database for preview');
+    console.log('Fetching sample data from sample tables for preview');
     
-    // Try to get sample feeds with their items
+    // Try to get sample feeds with their items as originally intended
     const { data, error } = await supabase
       .from('sample_news_feeds')
       .select(`
@@ -241,12 +241,13 @@ export async function fetchSampleCategories() {
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.warn('Error fetching sample data:', error);
+      console.warn('Error fetching from sample tables:', error);
+      // Return fallback data directly instead of trying other tables
       return createFallbackSampleData();
     }
     
     if (!data || data.length === 0) {
-      console.warn('No sample data found in database');
+      console.warn('No data found in sample tables');
       return createFallbackSampleData();
     }
     

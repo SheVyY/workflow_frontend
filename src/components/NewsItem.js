@@ -324,9 +324,16 @@ export function generateNewsItem(newsData, isSampleData = true, feedId = null, c
         storyContent.textContent = item.content;
         
         const readMore = document.createElement('a');
-        readMore.href = item.url;
+        // Ensure URL has proper protocol prefix
+        let url = item.source_url || '#';
+        if (url !== '#' && !url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+        }
+        readMore.href = url;
         readMore.className = 'read-more';
         readMore.textContent = 'Read more';
+        readMore.target = '_blank';
+        readMore.rel = 'noopener noreferrer';
         
         story.appendChild(diamond);
         story.appendChild(titleContainer);
